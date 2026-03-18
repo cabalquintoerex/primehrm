@@ -32,10 +32,13 @@ iii.	Scheduling of trainings
 iv.	Monitoring for training
 v.	Employees Submit Report and appearance after trainings
 
+3. There should be and LGU management where they can setup LGU name, logo, address, contact and those accounts should belong to an LGU except the applicant account who can apply to any lgu. ANd the lgu name and logo should be displayed on login.
 
-For the tech stack you may use the following : 
-1. Reactjs
-2. Tailwind
-3. shadcn
-4. mysql
-but you can suggest, because i want a user friendly web app and not heave on process.
+4. Super admin will also set the LGU link where it will be used during there login, posting of position etc.. like /lgu/careers, /lgu/login 
+
+
+For the tech stack please use the one I used in Ambulance tracker. I have its plan.d and status.m file at referenceFolder folder please read those.
+and for the look and feel make exactly like the ambulance tracker. 
+
+
+tell me your plan first. 

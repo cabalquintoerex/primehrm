@@ -1,0 +1,422 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Lgu {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  logo      String?
+  headerBg  String?  @map("header_bg")
+  address   String?
+  contactNumber String?  @map("contact_number")
+  email     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  departments Department[]
+  positions   Position[]
+  trainings   Training[]
+  cscBatches  CscPublicationBatch[]
+
+  @@map("lgus")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  LGU_HR_ADMIN
+  LGU_OFFICE_ADMIN
+  APPLICANT
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  role      UserRole @default(APPLICANT)
+  isActive  Boolean  @default(true) @map("is_active")
+  lguId     Int?     @map("lgu_id")
+  departmentId Int?  @map("department_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lgu        Lgu?        @relation(fields: [lguId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  auditLogs  AuditLog[]
+  applications       Application[]
+  personalDataSheet  PersonalDataSheet?
+  workExperienceSheet WorkExperienceSheet?
+  interviewsCreated  InterviewSchedule[] @relation("InterviewCreator")
+  assessmentsScored  AssessmentScore[]   @relation("AssessmentScorer")
+  appointmentsCreated Appointment[]      @relation("AppointmentCreator")
+  requirementsVerified FinalRequirement[] @relation("RequirementVerifier")
+  trainingsCreated     Training[]              @relation("TrainingCreator")
+  cscBatchesCreated    CscPublicationBatch[]   @relation("CscBatchCreator")
+
+  @@map("users")
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String
+  code      String?
+  lguId     Int      @map("lgu_id")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lgu       Lgu        @relation(fields: [lguId], references: [id])
+  users     User[]
+  positions Position[]
+
+  @@unique([lguId, name])
+  @@map("departments")
+}
+
+model Position {
+  id          Int      @id @default(autoincrement())
+  title       String
+  itemNumber  String?  @map("item_number")
+  salaryGrade Int?     @map("salary_grade")
+  monthlySalary Decimal? @map("monthly_salary") @db.Decimal(12, 2)
+  education   String?  @db.Text
+  training    String?  @db.Text
+  experience  String?  @db.Text
+  eligibility String?  @db.Text
+  competency  String?  @db.Text
+  placeOfAssignment String? @map("place_of_assignment")
+  description String?  @db.Text
+  requirements Json?
+  status      PositionStatus @default(DRAFT)
+  openDate    DateTime? @map("open_date")
+  closeDate   DateTime? @map("close_date")
+  slots       Int      @default(1)
+  lguId       Int      @map("lgu_id")
+  departmentId Int?    @map("department_id")
+  createdBy   Int?     @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  cscBatchId  Int?       @map("csc_batch_id")
+
+  lgu        Lgu         @relation(fields: [lguId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  cscBatch   CscPublicationBatch? @relation(fields: [cscBatchId], references: [id], onDelete: SetNull)
+  documentRequirements PositionDocumentRequirement[]
+  applications Application[]
+  interviewSchedules InterviewSchedule[]
+  assessmentScores   AssessmentScore[]
+  appointments       Appointment[]
+
+  @@map("positions")
+}
+
+enum PositionStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  FILLED
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  action    String
+  entity    String
+  entityId  Int?     @map("entity_id")
+  oldValues Json?    @map("old_values")
+  newValues Json?    @map("new_values")
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model PositionDocumentRequirement {
+  id          Int      @id @default(autoincrement())
+  positionId  Int      @map("position_id")
+  label       String
+  description String?  @db.Text
+  isRequired  Boolean  @default(true) @map("is_required")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  position    Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  applicationDocuments ApplicationDocument[]
+
+  @@map("position_document_requirements")
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  ENDORSED
+  SHORTLISTED
+  FOR_INTERVIEW
+  INTERVIEWED
+  QUALIFIED
+  SELECTED
+  APPOINTED
+  REJECTED
+  WITHDRAWN
+}
+
+model Application {
+  id           Int      @id @default(autoincrement())
+  positionId   Int      @map("position_id")
+  applicantId  Int      @map("applicant_id")
+  status       ApplicationStatus @default(SUBMITTED)
+  submittedAt  DateTime @default(now()) @map("submitted_at")
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  position     Position @relation(fields: [positionId], references: [id])
+  applicant    User     @relation(fields: [applicantId], references: [id])
+  documents    ApplicationDocument[]
+  interviewAssignments InterviewScheduleApplicant[]
+  assessmentScore      AssessmentScore?
+  appointment          Appointment?
+
+  @@unique([positionId, applicantId])
+  @@map("applications")
+}
+
+model PersonalDataSheet {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  data      Json
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("personal_data_sheets")
+}
+
+model WorkExperienceSheet {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  data      Json
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("work_experience_sheets")
+}
+
+model ApplicationDocument {
+  id             Int      @id @default(autoincrement())
+  applicationId  Int      @map("application_id")
+  requirementId  Int      @map("requirement_id")
+  fileName       String   @map("file_name")
+  filePath       String   @map("file_path")
+  fileSize       Int      @map("file_size")
+  mimeType       String   @map("mime_type")
+  uploadedAt     DateTime @default(now()) @map("uploaded_at")
+
+  application    Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  requirement    PositionDocumentRequirement @relation(fields: [requirementId], references: [id])
+
+  @@map("application_documents")
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model InterviewSchedule {
+  id           Int      @id @default(autoincrement())
+  positionId   Int      @map("position_id")
+  scheduleDate DateTime @map("schedule_date")
+  venue        String?
+  notes        String?  @db.Text
+  status       InterviewStatus @default(SCHEDULED)
+  createdBy    Int      @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  position     Position @relation(fields: [positionId], references: [id])
+  creator      User     @relation("InterviewCreator", fields: [createdBy], references: [id])
+  applicants   InterviewScheduleApplicant[]
+
+  @@map("interview_schedules")
+}
+
+model InterviewScheduleApplicant {
+  id                  Int      @id @default(autoincrement())
+  interviewScheduleId Int      @map("interview_schedule_id")
+  applicationId       Int      @map("application_id")
+  notified            Boolean  @default(false)
+  attended            Boolean?
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  interviewSchedule   InterviewSchedule @relation(fields: [interviewScheduleId], references: [id], onDelete: Cascade)
+  application         Application       @relation(fields: [applicationId], references: [id])
+
+  @@unique([interviewScheduleId, applicationId])
+  @@map("interview_schedule_applicants")
+}
+
+model AssessmentScore {
+  id               Int      @id @default(autoincrement())
+  applicationId    Int      @unique @map("application_id")
+  positionId       Int      @map("position_id")
+  educationScore   Decimal? @map("education_score") @db.Decimal(5, 2)
+  trainingScore    Decimal? @map("training_score") @db.Decimal(5, 2)
+  experienceScore  Decimal? @map("experience_score") @db.Decimal(5, 2)
+  performanceScore Decimal? @map("performance_score") @db.Decimal(5, 2)
+  psychosocialScore Decimal? @map("psychosocial_score") @db.Decimal(5, 2)
+  potentialScore   Decimal? @map("potential_score") @db.Decimal(5, 2)
+  interviewScore   Decimal? @map("interview_score") @db.Decimal(5, 2)
+  totalScore       Decimal? @map("total_score") @db.Decimal(5, 2)
+  remarks          String?  @db.Text
+  scoredBy         Int      @map("scored_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  application      Application @relation(fields: [applicationId], references: [id])
+  position         Position    @relation(fields: [positionId], references: [id])
+  scorer           User        @relation("AssessmentScorer", fields: [scoredBy], references: [id])
+
+  @@unique([applicationId, positionId])
+  @@map("assessment_scores")
+}
+
+enum AppointmentStatus {
+  PENDING
+  COMPLETED
+}
+
+model Appointment {
+  id              Int      @id @default(autoincrement())
+  applicationId   Int      @unique @map("application_id")
+  positionId      Int      @map("position_id")
+  appointmentDate DateTime @map("appointment_date")
+  oathDate        DateTime? @map("oath_date")
+  status          AppointmentStatus @default(PENDING)
+  createdBy       Int      @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  application     Application @relation(fields: [applicationId], references: [id])
+  position        Position    @relation(fields: [positionId], references: [id])
+  creator         User        @relation("AppointmentCreator", fields: [createdBy], references: [id])
+  finalRequirements FinalRequirement[]
+
+  @@map("appointments")
+}
+
+model FinalRequirement {
+  id              Int      @id @default(autoincrement())
+  appointmentId   Int      @map("appointment_id")
+  requirementName String   @map("requirement_name")
+  description     String?  @db.Text
+  isSubmitted     Boolean  @default(false) @map("is_submitted")
+  isVerified      Boolean  @default(false) @map("is_verified")
+  verifiedBy      Int?     @map("verified_by")
+  verifiedAt      DateTime? @map("verified_at")
+  filePath        String?  @map("file_path")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  verifier        User?       @relation("RequirementVerifier", fields: [verifiedBy], references: [id])
+
+  @@map("final_requirements")
+}
+
+enum TrainingType {
+  MANAGERIAL
+  SUPERVISORY
+  TECHNICAL
+  FOUNDATION
+}
+
+enum TrainingStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+model Training {
+  id             Int            @id @default(autoincrement())
+  title          String
+  description    String?        @db.Text
+  type           TrainingType
+  venue          String?
+  conductedBy    String?        @map("conducted_by")
+  startDate      DateTime       @map("start_date")
+  endDate        DateTime       @map("end_date")
+  numberOfHours  Decimal?       @map("number_of_hours") @db.Decimal(6, 2)
+  status         TrainingStatus @default(UPCOMING)
+  lguId          Int            @map("lgu_id")
+  createdBy      Int            @map("created_by")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  lgu            Lgu            @relation(fields: [lguId], references: [id])
+  creator        User           @relation("TrainingCreator", fields: [createdBy], references: [id])
+  participants   TrainingParticipant[]
+
+  @@map("trainings")
+}
+
+model TrainingParticipant {
+  id          Int       @id @default(autoincrement())
+  trainingId  Int       @map("training_id")
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  department  String?
+  attended    Boolean?
+  completedAt DateTime? @map("completed_at")
+  remarks     String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  training    Training  @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+
+  @@map("training_participants")
+}
+
+model CscPublicationBatch {
+  id          Int       @id @default(autoincrement())
+  batchNumber String    @map("batch_number")
+  description String?   @db.Text
+  openDate    DateTime  @map("open_date")
+  closeDate   DateTime  @map("close_date")
+  isPublished Boolean   @default(false) @map("is_published")
+  publishedAt DateTime? @map("published_at")
+  lguId       Int       @map("lgu_id")
+  createdBy   Int       @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  lgu         Lgu       @relation(fields: [lguId], references: [id])
+  creator     User      @relation("CscBatchCreator", fields: [createdBy], references: [id])
+  positions   Position[]
+
+  @@unique([lguId, batchNumber])
+  @@map("csc_publication_batches")
+}
