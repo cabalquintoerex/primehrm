@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +23,7 @@ export function CareersPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [page, setPage] = useState(1);
 
   const { data: lgu } = useQuery<Lgu>({
@@ -46,10 +48,10 @@ export function CareersPage() {
   const appliedPositionIds = new Set(myApplications?.map((a) => a.positionId) || []);
 
   const { data, isLoading } = useQuery<PaginatedResponse<Position>>({
-    queryKey: ['public-careers', slug, search, page],
+    queryKey: ['public-careers', slug, debouncedSearch, page],
     queryFn: async () => {
       const { data } = await api.get(`/public/${slug}/careers`, {
-        params: { search, page, limit: 12 },
+        params: { search: debouncedSearch, page, limit: 12 },
       });
       return data;
     },

@@ -159,7 +159,7 @@ async function main() {
   });
   console.log('Created LGU:', lapulapu.name);
 
-  const lapulapuDepts = ['Human Resource Office', 'Engineering Office', 'Treasury Office'];
+  const lapulapuDepts = ['Human Resource Office', 'Engineering Office', 'Treasury Office', 'Tourism Office', 'Health Office'];
   for (const deptName of lapulapuDepts) {
     await prisma.department.upsert({
       where: { lguId_name: { lguId: lapulapu.id, name: deptName } },
@@ -169,7 +169,7 @@ async function main() {
   }
 
   const lapulapuHrPassword = await bcrypt.hash('hradmin123', 12);
-  await prisma.user.upsert({
+  const llHrAdmin = await prisma.user.upsert({
     where: { email: 'hr@lapulapucity.gov.ph' },
     update: {},
     create: {
@@ -187,7 +187,7 @@ async function main() {
   // Create Lapu-Lapu Office Admin
   const lapulapuEngDept = await prisma.department.findFirst({ where: { lguId: lapulapu.id, name: 'Engineering Office' } });
   const lapulapuOfficePassword = await bcrypt.hash('office123', 12);
-  await prisma.user.upsert({
+  const llOfficeAdmin = await prisma.user.upsert({
     where: { email: 'engineering@lapulapucity.gov.ph' },
     update: {},
     create: {
@@ -2277,6 +2277,734 @@ async function main() {
   console.log(`Created ${auditLogs.length} audit logs for Cebu City pipeline`);
 
   console.log('\n--- Cebu City Full Pipeline Seed Complete ---');
+
+  // =============================================
+  // LAPU-LAPU CITY — Full RSP Pipeline
+  // =============================================
+
+  console.log('\n--- Seeding Lapu-Lapu City Pipeline ---');
+
+  // Fetch departments
+  const llEngDept = await prisma.department.findFirst({ where: { lguId: lapulapu.id, name: 'Engineering Office' } });
+  const llTreasuryDept = await prisma.department.findFirst({ where: { lguId: lapulapu.id, name: 'Treasury Office' } });
+  const llTourismDept = await prisma.department.findFirst({ where: { lguId: lapulapu.id, name: 'Tourism Office' } });
+  const llHealthDept = await prisma.department.findFirst({ where: { lguId: lapulapu.id, name: 'Health Office' } });
+  const llHrDept = await prisma.department.findFirst({ where: { lguId: lapulapu.id, name: 'Human Resource Office' } });
+
+  // Create Tourism Office Admin
+  const llTourismAdmin = await prisma.user.create({
+    data: {
+      email: 'tourism@lapulapucity.gov.ph',
+      username: 'lapulaputourism',
+      password: await bcrypt.hash('office123', 12),
+      firstName: 'Tourism',
+      lastName: 'Admin',
+      role: 'LGU_OFFICE_ADMIN',
+      lguId: lapulapu.id,
+      departmentId: llTourismDept?.id,
+    },
+  });
+  console.log('Created Lapu-Lapu Tourism Office Admin');
+
+  // --- CSC Publication Batches ---
+  const llBatch1 = await prisma.cscPublicationBatch.create({
+    data: {
+      batchNumber: '2026-001',
+      description: 'First quarter publication — Engineering, Tourism, and Treasury positions',
+      openDate: new Date('2026-02-01'),
+      closeDate: new Date('2026-02-16'),
+      isPublished: true,
+      publishedAt: new Date('2026-02-01'),
+      lguId: lapulapu.id,
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  const llBatch2 = await prisma.cscPublicationBatch.create({
+    data: {
+      batchNumber: '2026-002',
+      description: 'Second quarter publication — Health and HR positions',
+      openDate: new Date('2026-04-01'),
+      closeDate: new Date('2026-04-16'),
+      isPublished: false,
+      lguId: lapulapu.id,
+      createdBy: llHrAdmin.id,
+    },
+  });
+  console.log('Created 2 Lapu-Lapu CSC Batches');
+
+  // --- Document Requirements Template ---
+  const llDocReqs = [
+    { label: 'Letter of Intent', description: 'Addressed to the City Mayor, indicating Position Title and Plantilla Item No.', isRequired: true, sortOrder: 1 },
+    { label: 'Personal Data Sheet (CS Form 212, Revised 2025)', description: 'Fully accomplished PDS with Work Experience Sheet and recent passport-sized photo — single PDF', isRequired: true, sortOrder: 2 },
+    { label: 'Performance Rating', description: 'Performance rating in the last rating period (if applicable)', isRequired: false, sortOrder: 3 },
+    { label: 'Certificate of Eligibility/Rating/License', description: 'Authenticated copy of civil service eligibility or professional license', isRequired: true, sortOrder: 4 },
+    { label: 'Transcript of Records', description: 'Official transcript of records from the school last attended', isRequired: true, sortOrder: 5 },
+    { label: 'Training Certificates', description: 'All training certificates compiled in a single PDF (for positions with training requirements)', isRequired: false, sortOrder: 6 },
+    { label: 'Designation Orders', description: 'Designation orders (if applicable)', isRequired: false, sortOrder: 7 },
+  ];
+
+  // --- Positions ---
+
+  // Position 1: Civil Engineer III (Engineering, 2 slots, OPEN — Batch 1)
+  const llPos1 = await prisma.position.create({
+    data: {
+      title: 'Civil Engineer III',
+      itemNumber: 'LLC-CE3-01-2026',
+      salaryGrade: 19,
+      monthlySalary: 54461,
+      education: "Bachelor's degree in Civil Engineering",
+      training: '8 hours of relevant training',
+      experience: '2 years of relevant experience',
+      eligibility: 'RA 1080 (Registered Civil Engineer)',
+      competency: 'Structural design, project management, construction supervision, AutoCAD proficiency',
+      placeOfAssignment: 'Engineering Office, Lapu-Lapu City Hall',
+      description: 'Responsible for the design, planning, and supervision of infrastructure projects including roads, bridges, and government buildings in the city.',
+      status: 'OPEN',
+      openDate: new Date('2026-02-01'),
+      closeDate: new Date('2026-02-16'),
+      slots: 2,
+      lguId: lapulapu.id,
+      departmentId: llEngDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch1.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos1.id, ...req } });
+  }
+
+  // Position 2: Tourism Operations Officer III (Tourism, 1 slot, OPEN — Batch 1)
+  const llPos2 = await prisma.position.create({
+    data: {
+      title: 'Tourism Operations Officer III',
+      itemNumber: 'LLC-TOO3-02-2026',
+      salaryGrade: 18,
+      monthlySalary: 51357,
+      education: "Bachelor's degree in Tourism Management, Hospitality, or related field",
+      training: '8 hours of relevant training',
+      experience: '2 years of relevant experience',
+      eligibility: 'Career Service Professional / Second Level Eligibility',
+      competency: 'Tourism planning, event management, stakeholder coordination, marketing and promotions',
+      placeOfAssignment: 'Tourism Office, Lapu-Lapu City Hall',
+      description: 'Manages tourism programs and events for Lapu-Lapu City, coordinates with resort operators and DOT, and promotes Mactan Island as a premier tourist destination.',
+      status: 'OPEN',
+      openDate: new Date('2026-02-01'),
+      closeDate: new Date('2026-02-16'),
+      slots: 1,
+      lguId: lapulapu.id,
+      departmentId: llTourismDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch1.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos2.id, ...req } });
+  }
+
+  // Position 3: Revenue Collection Officer II (Treasury, 1 slot, FILLED — Batch 1)
+  const llPos3 = await prisma.position.create({
+    data: {
+      title: 'Revenue Collection Officer II',
+      itemNumber: 'LLC-RCO2-03-2026',
+      salaryGrade: 15,
+      monthlySalary: 42159,
+      education: "Bachelor's degree in Accountancy, Business Administration, or related field",
+      training: '4 hours of relevant training',
+      experience: '1 year of relevant experience',
+      eligibility: 'Career Service Professional / Second Level Eligibility',
+      competency: 'Revenue collection, financial reconciliation, taxpayer services, government accounting',
+      placeOfAssignment: 'Treasury Office, Lapu-Lapu City Hall',
+      description: 'Handles revenue collection operations, real property tax assessment verification, and taxpayer account reconciliation for the City Treasury.',
+      status: 'FILLED',
+      openDate: new Date('2026-02-01'),
+      closeDate: new Date('2026-02-16'),
+      slots: 1,
+      lguId: lapulapu.id,
+      departmentId: llTreasuryDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch1.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos3.id, ...req } });
+  }
+
+  // Position 4: Nurse II (Health, 1 slot, DRAFT — Batch 2)
+  const llPos4 = await prisma.position.create({
+    data: {
+      title: 'Nurse II',
+      itemNumber: 'LLC-NRS2-04-2026',
+      salaryGrade: 15,
+      monthlySalary: 42159,
+      education: 'Bachelor of Science in Nursing',
+      training: '4 hours of relevant training',
+      experience: '1 year of relevant experience',
+      eligibility: 'RA 1080 (Registered Nurse)',
+      competency: 'Patient care, community health nursing, immunization, health education',
+      placeOfAssignment: 'City Health Office, Lapu-Lapu City',
+      description: 'Provides nursing care services at the City Health Office, implements community health programs, and supports immunization and maternal health initiatives.',
+      status: 'DRAFT',
+      openDate: new Date('2026-04-01'),
+      closeDate: new Date('2026-04-16'),
+      slots: 1,
+      lguId: lapulapu.id,
+      departmentId: llHealthDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch2.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos4.id, ...req } });
+  }
+
+  // Position 5: Administrative Officer III (HR, 1 slot, DRAFT — Batch 2)
+  const llPos5 = await prisma.position.create({
+    data: {
+      title: 'Administrative Officer III',
+      itemNumber: 'LLC-AO3-05-2026',
+      salaryGrade: 14,
+      monthlySalary: 39672,
+      education: "Bachelor's degree relevant to the job",
+      training: '4 hours of relevant training',
+      experience: '1 year of relevant experience',
+      eligibility: 'Career Service Professional / Second Level Eligibility',
+      competency: 'Office administration, records management, personnel coordination, document processing',
+      placeOfAssignment: 'Human Resource Office, Lapu-Lapu City Hall',
+      description: 'Provides administrative support to the HR Office including personnel records management, leave administration, and employee documentation.',
+      status: 'DRAFT',
+      openDate: new Date('2026-04-01'),
+      closeDate: new Date('2026-04-16'),
+      slots: 1,
+      lguId: lapulapu.id,
+      departmentId: llHrDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch2.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos5.id, ...req } });
+  }
+
+  console.log('Created 5 positions for Lapu-Lapu (2 open + 1 filled + 2 draft)');
+
+  // =============================================
+  // LAPU-LAPU APPLICATIONS — Full Pipeline Demo
+  // =============================================
+  //
+  // Position 1 (Civil Engineer III, Engineering, 2 slots):
+  //   Juan → APPOINTED | Roberto → SELECTED | Anna → QUALIFIED
+  //   Pedro → SHORTLISTED | Elena → ENDORSED
+  //
+  // Position 2 (Tourism Ops Officer III, Tourism, 1 slot):
+  //   Maria → APPOINTED (position still OPEN — 1 slot remains... but we keep it OPEN)
+  //   Wait — Tourism has 1 slot, so if Maria is appointed it would be FILLED. Let's adjust.
+  //   Maria → INTERVIEWED (awaiting qualification)
+  //   Anna → FOR_INTERVIEW
+  //
+  // Position 3 (Revenue Collection Officer II, Treasury, 1 slot, FILLED):
+  //   Pedro → APPOINTED
+  //
+
+  // --- Position 1 (Civil Engineer III) Applications ---
+  const llApp1Juan = await prisma.application.create({
+    data: {
+      positionId: llPos1.id,
+      applicantId: applicant.id,  // Juan
+      status: 'APPOINTED',
+      submittedAt: new Date('2026-02-02T09:00:00'),
+      notes: 'Top scorer — appointed to 1st vacancy slot',
+    },
+  });
+
+  const llApp1Roberto = await prisma.application.create({
+    data: {
+      positionId: llPos1.id,
+      applicantId: applicant3.id,  // Roberto
+      status: 'SELECTED',
+      submittedAt: new Date('2026-02-03T10:30:00'),
+      notes: 'Second highest score — selected for 2nd vacancy slot, pending appointment',
+    },
+  });
+
+  const llApp1Anna = await prisma.application.create({
+    data: {
+      positionId: llPos1.id,
+      applicantId: applicant4.id,  // Anna
+      status: 'QUALIFIED',
+      submittedAt: new Date('2026-02-04T11:00:00'),
+      notes: 'Qualified but not selected — vacancy slots filled',
+    },
+  });
+
+  const llApp1Pedro = await prisma.application.create({
+    data: {
+      positionId: llPos1.id,
+      applicantId: applicant5.id,  // Pedro
+      status: 'SHORTLISTED',
+      submittedAt: new Date('2026-02-05T14:00:00'),
+    },
+  });
+
+  const llApp1Elena = await prisma.application.create({
+    data: {
+      positionId: llPos1.id,
+      applicantId: applicant6.id,  // Elena
+      status: 'ENDORSED',
+      submittedAt: new Date('2026-02-06T08:30:00'),
+    },
+  });
+
+  // --- Position 2 (Tourism Ops Officer III) Applications ---
+  const llApp2Maria = await prisma.application.create({
+    data: {
+      positionId: llPos2.id,
+      applicantId: applicant2.id,  // Maria
+      status: 'INTERVIEWED',
+      submittedAt: new Date('2026-02-02T10:00:00'),
+      notes: 'Completed interview — awaiting assessment scoring',
+    },
+  });
+
+  const llApp2Anna = await prisma.application.create({
+    data: {
+      positionId: llPos2.id,
+      applicantId: applicant4.id,  // Anna
+      status: 'FOR_INTERVIEW',
+      submittedAt: new Date('2026-02-03T09:00:00'),
+      notes: 'Assigned to interview schedule — awaiting interview date',
+    },
+  });
+
+  // --- Position 3 (Revenue Collection Officer II, FILLED) Application ---
+  const llApp3Pedro = await prisma.application.create({
+    data: {
+      positionId: llPos3.id,
+      applicantId: applicant5.id,  // Pedro
+      status: 'APPOINTED',
+      submittedAt: new Date('2026-02-02T11:00:00'),
+      notes: 'Sole qualified candidate — position filled',
+    },
+  });
+
+  const llApp3Elena = await prisma.application.create({
+    data: {
+      positionId: llPos3.id,
+      applicantId: applicant6.id,  // Elena
+      status: 'REJECTED',
+      submittedAt: new Date('2026-02-04T13:00:00'),
+      notes: 'Did not meet eligibility requirements',
+    },
+  });
+
+  console.log('Created 9 Lapu-Lapu applications across 3 positions');
+
+  // =============================================
+  // LAPU-LAPU INTERVIEW SCHEDULES
+  // =============================================
+
+  // Interview for Position 1 — COMPLETED (Juan, Roberto, Anna attended)
+  const llInterview1 = await prisma.interviewSchedule.create({
+    data: {
+      positionId: llPos1.id,
+      scheduleDate: new Date('2026-03-01T09:00:00'),
+      venue: 'Lapu-Lapu City Hall — Conference Room, 2nd Floor',
+      notes: 'Panel interview for Civil Engineer III candidates. Panel: HR Admin, City Engineer, HRMPSB Member.',
+      status: 'COMPLETED',
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  await prisma.interviewScheduleApplicant.createMany({
+    data: [
+      { interviewScheduleId: llInterview1.id, applicationId: llApp1Juan.id, notified: true, attended: true },
+      { interviewScheduleId: llInterview1.id, applicationId: llApp1Roberto.id, notified: true, attended: true },
+      { interviewScheduleId: llInterview1.id, applicationId: llApp1Anna.id, notified: true, attended: true },
+    ],
+  });
+
+  // Interview for Position 2 — SCHEDULED (Maria attended, Anna assigned but not yet conducted)
+  const llInterview2 = await prisma.interviewSchedule.create({
+    data: {
+      positionId: llPos2.id,
+      scheduleDate: new Date('2026-03-05T09:00:00'),
+      venue: 'Lapu-Lapu City Hall — Mayor\'s Conference Room, 3rd Floor',
+      notes: 'Panel interview for Tourism Operations Officer III candidates.',
+      status: 'COMPLETED',
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  await prisma.interviewScheduleApplicant.createMany({
+    data: [
+      { interviewScheduleId: llInterview2.id, applicationId: llApp2Maria.id, notified: true, attended: true },
+      { interviewScheduleId: llInterview2.id, applicationId: llApp2Anna.id, notified: true, attended: false },
+    ],
+  });
+
+  // Interview for Position 3 — COMPLETED (Pedro attended)
+  const llInterview3 = await prisma.interviewSchedule.create({
+    data: {
+      positionId: llPos3.id,
+      scheduleDate: new Date('2026-02-25T09:00:00'),
+      venue: 'Lapu-Lapu City Hall — Conference Room, 2nd Floor',
+      notes: 'Panel interview for Revenue Collection Officer II candidates.',
+      status: 'COMPLETED',
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  await prisma.interviewScheduleApplicant.create({
+    data: {
+      interviewScheduleId: llInterview3.id,
+      applicationId: llApp3Pedro.id,
+      notified: true,
+      attended: true,
+    },
+  });
+
+  console.log('Created 3 Lapu-Lapu interview schedules');
+
+  // =============================================
+  // LAPU-LAPU ASSESSMENT SCORES
+  // =============================================
+
+  // Position 1 — 3 scored applicants (Juan, Roberto, Anna)
+  await prisma.assessmentScore.create({
+    data: {
+      applicationId: llApp1Juan.id,
+      positionId: llPos1.id,
+      educationScore: 15.00,
+      trainingScore: 13.00,
+      experienceScore: 17.00,
+      performanceScore: 15.50,
+      psychosocialScore: 14.00,
+      potentialScore: 13.00,
+      interviewScore: 14.50,
+      totalScore: 102.00,
+      remarks: 'Outstanding candidate — strong technical background with government engineering experience',
+      scoredBy: llHrAdmin.id,
+    },
+  });
+
+  await prisma.assessmentScore.create({
+    data: {
+      applicationId: llApp1Roberto.id,
+      positionId: llPos1.id,
+      educationScore: 14.00,
+      trainingScore: 12.50,
+      experienceScore: 15.50,
+      performanceScore: 14.00,
+      psychosocialScore: 13.50,
+      potentialScore: 12.50,
+      interviewScore: 13.00,
+      totalScore: 95.00,
+      remarks: 'Solid engineering credentials with good leadership potential',
+      scoredBy: llHrAdmin.id,
+    },
+  });
+
+  await prisma.assessmentScore.create({
+    data: {
+      applicationId: llApp1Anna.id,
+      positionId: llPos1.id,
+      educationScore: 13.50,
+      trainingScore: 11.00,
+      experienceScore: 13.00,
+      performanceScore: 13.50,
+      psychosocialScore: 12.00,
+      potentialScore: 11.50,
+      interviewScore: 12.00,
+      totalScore: 86.50,
+      remarks: 'Qualified — recommended for future technical openings',
+      scoredBy: llHrAdmin.id,
+    },
+  });
+
+  // Position 3 — Pedro
+  await prisma.assessmentScore.create({
+    data: {
+      applicationId: llApp3Pedro.id,
+      positionId: llPos3.id,
+      educationScore: 14.00,
+      trainingScore: 12.00,
+      experienceScore: 15.00,
+      performanceScore: 14.50,
+      psychosocialScore: 13.00,
+      potentialScore: 12.00,
+      interviewScore: 13.50,
+      totalScore: 94.00,
+      remarks: 'Well-qualified for revenue collection role — solid accounting background',
+      scoredBy: llHrAdmin.id,
+    },
+  });
+
+  console.log('Created 4 Lapu-Lapu assessment scores');
+
+  // =============================================
+  // LAPU-LAPU APPOINTMENTS
+  // =============================================
+
+  // Appointment 1: Juan — Civil Engineer III — PENDING (4/8 requirements verified)
+  const llAppointment1 = await prisma.appointment.create({
+    data: {
+      applicationId: llApp1Juan.id,
+      positionId: llPos1.id,
+      appointmentDate: new Date('2026-03-15'),
+      oathDate: new Date('2026-03-20'),
+      status: 'PENDING',
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  const juanLLFinalReqs = [
+    { requirementName: 'Oath of Office', description: 'Signed oath of office form (CS Form 32)', isSubmitted: true, isVerified: true, verifiedBy: llHrAdmin.id, verifiedAt: new Date('2026-03-21T10:00:00') },
+    { requirementName: 'Appointment Form', description: 'Signed appointment form (CS Form 33-B)', isSubmitted: true, isVerified: true, verifiedBy: llHrAdmin.id, verifiedAt: new Date('2026-03-21T10:05:00') },
+    { requirementName: 'Certificate of Assumption to Duty', description: 'Signed certificate of assumption to duty', isSubmitted: true, isVerified: true, verifiedBy: llHrAdmin.id, verifiedAt: new Date('2026-03-22T09:00:00') },
+    { requirementName: 'Birth Certificate', description: 'PSA-authenticated birth certificate', isSubmitted: true, isVerified: true, verifiedBy: llHrAdmin.id, verifiedAt: new Date('2026-03-22T09:30:00') },
+    { requirementName: 'Marriage Certificate', description: 'PSA-authenticated marriage certificate (if applicable)', isSubmitted: false, isVerified: false },
+    { requirementName: 'NBI Clearance', description: 'Valid NBI clearance (issued within the last 6 months)', isSubmitted: false, isVerified: false },
+    { requirementName: 'Medical Certificate', description: 'Medical certificate from a government physician', isSubmitted: false, isVerified: false },
+    { requirementName: 'Barangay Clearance', description: 'Barangay clearance from place of residence', isSubmitted: false, isVerified: false },
+  ];
+  for (const req of juanLLFinalReqs) {
+    await prisma.finalRequirement.create({ data: { appointmentId: llAppointment1.id, ...req } });
+  }
+
+  // Appointment 2: Pedro — Revenue Collection Officer II — COMPLETED (8/8 verified)
+  const llAppointment2 = await prisma.appointment.create({
+    data: {
+      applicationId: llApp3Pedro.id,
+      positionId: llPos3.id,
+      appointmentDate: new Date('2026-03-01'),
+      oathDate: new Date('2026-03-05'),
+      status: 'COMPLETED',
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  const pedroFinalReqNames = [
+    'Oath of Office',
+    'Appointment Form',
+    'Certificate of Assumption to Duty',
+    'Birth Certificate',
+    'Marriage Certificate',
+    'NBI Clearance',
+    'Medical Certificate',
+    'Barangay Clearance',
+  ];
+  for (const reqName of pedroFinalReqNames) {
+    await prisma.finalRequirement.create({
+      data: {
+        appointmentId: llAppointment2.id,
+        requirementName: reqName,
+        isSubmitted: true,
+        isVerified: true,
+        verifiedBy: llHrAdmin.id,
+        verifiedAt: new Date('2026-03-10T10:00:00'),
+      },
+    });
+  }
+
+  console.log('Created 2 Lapu-Lapu appointments (1 pending, 1 completed)');
+
+  // =============================================
+  // LAPU-LAPU TRAINING
+  // =============================================
+
+  const llTraining1 = await prisma.training.create({
+    data: {
+      title: 'Coastal Resource Management Training',
+      description: 'Technical training on coastal zone management, marine biodiversity protection, and sustainable tourism practices for island communities.',
+      type: 'TECHNICAL',
+      venue: 'Lapu-Lapu City Hall — Function Hall',
+      conductedBy: 'Department of Environment and Natural Resources — Region VII',
+      startDate: new Date('2026-02-17'),
+      endDate: new Date('2026-02-19'),
+      numberOfHours: 24,
+      status: 'COMPLETED',
+      lguId: lapulapu.id,
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  await prisma.trainingParticipant.createMany({
+    data: [
+      { trainingId: llTraining1.id, firstName: 'Lapu', lastName: 'Lapu', department: 'Tourism Office', attended: true, completedAt: new Date('2026-02-19') },
+      { trainingId: llTraining1.id, firstName: 'Datu', lastName: 'Zula', department: 'Engineering Office', attended: true, completedAt: new Date('2026-02-19') },
+      { trainingId: llTraining1.id, firstName: 'Rajah', lastName: 'Humabon', department: 'Treasury Office', attended: true, completedAt: new Date('2026-02-19') },
+      { trainingId: llTraining1.id, firstName: 'Teresa', lastName: 'Magellan', department: 'Health Office', attended: false, remarks: 'On official travel — to be rescheduled' },
+    ],
+  });
+
+  const llTraining2 = await prisma.training.create({
+    data: {
+      title: 'Tourism Promotion and Digital Marketing',
+      description: 'Foundation course on destination marketing, social media strategy for tourism promotion, and digital content creation for local government tourism offices.',
+      type: 'FOUNDATION',
+      venue: 'Shangri-La Mactan Resort — Coral Ballroom',
+      conductedBy: 'Department of Tourism — Region VII',
+      startDate: new Date('2026-03-24'),
+      endDate: new Date('2026-03-28'),
+      numberOfHours: 40,
+      status: 'ONGOING',
+      lguId: lapulapu.id,
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  await prisma.trainingParticipant.createMany({
+    data: [
+      { trainingId: llTraining2.id, firstName: 'Lapu', lastName: 'Lapu', department: 'Tourism Office', attended: null },
+      { trainingId: llTraining2.id, firstName: 'Urduja', lastName: 'Pangasinan', department: 'Tourism Office', attended: null },
+      { trainingId: llTraining2.id, firstName: 'Rajah', lastName: 'Humabon', department: 'Treasury Office', attended: null },
+    ],
+  });
+
+  const llTraining3 = await prisma.training.create({
+    data: {
+      title: 'Local Government Executive Leadership Program',
+      description: 'Managerial training for department heads on strategic planning, performance management, governance innovation, and policy development.',
+      type: 'MANAGERIAL',
+      venue: 'Lapu-Lapu City Hall — Function Hall',
+      conductedBy: 'Development Academy of the Philippines',
+      startDate: new Date('2026-05-05'),
+      endDate: new Date('2026-05-09'),
+      numberOfHours: 40,
+      status: 'UPCOMING',
+      lguId: lapulapu.id,
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  console.log('Created 3 Lapu-Lapu trainings (1 completed, 1 ongoing, 1 upcoming)');
+
+  // =============================================
+  // LAPU-LAPU AUDIT LOGS — Full Status Transitions
+  // =============================================
+
+  const llAuditLogs: Array<{
+    userId: number;
+    action: string;
+    entity: string;
+    entityId: number;
+    oldValues: any;
+    newValues: any;
+    ipAddress: string;
+    createdAt: Date;
+  }> = [];
+
+  const llAddLog = (userId: number, action: string, entity: string, entityId: number, oldValues: any, newValues: any, createdAt: Date) => {
+    llAuditLogs.push({ userId, action, entity, entityId, oldValues, newValues, ipAddress: '192.168.2.100', createdAt });
+  };
+
+  // --- Juan (Position 1: Civil Engineer III): SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUALIFIED → SELECTED → APPOINTED ---
+  llAddLog(applicant.id, 'SUBMIT_APPLICATION', 'application', llApp1Juan.id, null, { status: 'SUBMITTED', positionId: llPos1.id, applicantId: applicant.id }, new Date('2026-02-02T09:00:00'));
+  llAddLog(llHrAdmin.id, 'ENDORSE_APPLICATION', 'application', llApp1Juan.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-02-10T10:00:00'));
+  llAddLog(llOfficeAdmin.id, 'SHORTLIST_APPLICATION', 'application', llApp1Juan.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-02-14T14:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_INTERVIEW', 'application', llApp1Juan.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-20T09:00:00'));
+  llAddLog(llHrAdmin.id, 'COMPLETE_INTERVIEW', 'application', llApp1Juan.id, { status: 'FOR_INTERVIEW' }, { status: 'INTERVIEWED' }, new Date('2026-03-01T16:00:00'));
+  llAddLog(llHrAdmin.id, 'SAVE_ASSESSMENT_SCORE', 'application', llApp1Juan.id, null, { totalScore: 102.00 }, new Date('2026-03-03T09:00:00'));
+  llAddLog(llHrAdmin.id, 'QUALIFY_APPLICANTS', 'application', llApp1Juan.id, { status: 'INTERVIEWED' }, { status: 'QUALIFIED' }, new Date('2026-03-05T10:00:00'));
+  llAddLog(llHrAdmin.id, 'SELECT_APPLICANTS', 'application', llApp1Juan.id, { status: 'QUALIFIED' }, { status: 'SELECTED' }, new Date('2026-03-08T10:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_APPOINTMENT', 'application', llApp1Juan.id, { status: 'SELECTED' }, { status: 'APPOINTED' }, new Date('2026-03-15T09:00:00'));
+
+  // --- Roberto (Position 1): SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUALIFIED → SELECTED ---
+  llAddLog(applicant3.id, 'SUBMIT_APPLICATION', 'application', llApp1Roberto.id, null, { status: 'SUBMITTED', positionId: llPos1.id, applicantId: applicant3.id }, new Date('2026-02-03T10:30:00'));
+  llAddLog(llHrAdmin.id, 'ENDORSE_APPLICATION', 'application', llApp1Roberto.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-02-10T10:15:00'));
+  llAddLog(llOfficeAdmin.id, 'SHORTLIST_APPLICATION', 'application', llApp1Roberto.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-02-14T14:30:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_INTERVIEW', 'application', llApp1Roberto.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-20T09:05:00'));
+  llAddLog(llHrAdmin.id, 'COMPLETE_INTERVIEW', 'application', llApp1Roberto.id, { status: 'FOR_INTERVIEW' }, { status: 'INTERVIEWED' }, new Date('2026-03-01T16:05:00'));
+  llAddLog(llHrAdmin.id, 'SAVE_ASSESSMENT_SCORE', 'application', llApp1Roberto.id, null, { totalScore: 95.00 }, new Date('2026-03-03T09:15:00'));
+  llAddLog(llHrAdmin.id, 'QUALIFY_APPLICANTS', 'application', llApp1Roberto.id, { status: 'INTERVIEWED' }, { status: 'QUALIFIED' }, new Date('2026-03-05T10:05:00'));
+  llAddLog(llHrAdmin.id, 'SELECT_APPLICANTS', 'application', llApp1Roberto.id, { status: 'QUALIFIED' }, { status: 'SELECTED' }, new Date('2026-03-08T10:05:00'));
+
+  // --- Anna (Position 1): SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUALIFIED ---
+  llAddLog(applicant4.id, 'SUBMIT_APPLICATION', 'application', llApp1Anna.id, null, { status: 'SUBMITTED', positionId: llPos1.id, applicantId: applicant4.id }, new Date('2026-02-04T11:00:00'));
+  llAddLog(llHrAdmin.id, 'ENDORSE_APPLICATION', 'application', llApp1Anna.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-02-10T10:30:00'));
+  llAddLog(llOfficeAdmin.id, 'SHORTLIST_APPLICATION', 'application', llApp1Anna.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-02-14T15:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_INTERVIEW', 'application', llApp1Anna.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-20T09:10:00'));
+  llAddLog(llHrAdmin.id, 'COMPLETE_INTERVIEW', 'application', llApp1Anna.id, { status: 'FOR_INTERVIEW' }, { status: 'INTERVIEWED' }, new Date('2026-03-01T16:10:00'));
+  llAddLog(llHrAdmin.id, 'SAVE_ASSESSMENT_SCORE', 'application', llApp1Anna.id, null, { totalScore: 86.50 }, new Date('2026-03-03T09:30:00'));
+  llAddLog(llHrAdmin.id, 'QUALIFY_APPLICANTS', 'application', llApp1Anna.id, { status: 'INTERVIEWED' }, { status: 'QUALIFIED' }, new Date('2026-03-05T10:10:00'));
+
+  // --- Pedro (Position 1): SUBMITTED → ENDORSED → SHORTLISTED ---
+  llAddLog(applicant5.id, 'SUBMIT_APPLICATION', 'application', llApp1Pedro.id, null, { status: 'SUBMITTED', positionId: llPos1.id, applicantId: applicant5.id }, new Date('2026-02-05T14:00:00'));
+  llAddLog(llHrAdmin.id, 'ENDORSE_APPLICATION', 'application', llApp1Pedro.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-02-11T09:00:00'));
+  llAddLog(llOfficeAdmin.id, 'SHORTLIST_APPLICATION', 'application', llApp1Pedro.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-02-15T10:00:00'));
+
+  // --- Elena (Position 1): SUBMITTED → ENDORSED ---
+  llAddLog(applicant6.id, 'SUBMIT_APPLICATION', 'application', llApp1Elena.id, null, { status: 'SUBMITTED', positionId: llPos1.id, applicantId: applicant6.id }, new Date('2026-02-06T08:30:00'));
+  llAddLog(llHrAdmin.id, 'ENDORSE_APPLICATION', 'application', llApp1Elena.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-02-11T09:30:00'));
+
+  // --- Maria (Position 2: Tourism Ops Officer III): SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED ---
+  llAddLog(applicant2.id, 'SUBMIT_APPLICATION', 'application', llApp2Maria.id, null, { status: 'SUBMITTED', positionId: llPos2.id, applicantId: applicant2.id }, new Date('2026-02-02T10:00:00'));
+  llAddLog(llHrAdmin.id, 'ENDORSE_APPLICATION', 'application', llApp2Maria.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-02-10T11:00:00'));
+  llAddLog(llTourismAdmin.id, 'SHORTLIST_APPLICATION', 'application', llApp2Maria.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-02-13T10:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_INTERVIEW', 'application', llApp2Maria.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-22T09:00:00'));
+  llAddLog(llHrAdmin.id, 'COMPLETE_INTERVIEW', 'application', llApp2Maria.id, { status: 'FOR_INTERVIEW' }, { status: 'INTERVIEWED' }, new Date('2026-03-05T16:00:00'));
+
+  // --- Anna (Position 2): SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW ---
+  llAddLog(applicant4.id, 'SUBMIT_APPLICATION', 'application', llApp2Anna.id, null, { status: 'SUBMITTED', positionId: llPos2.id, applicantId: applicant4.id }, new Date('2026-02-03T09:00:00'));
+  llAddLog(llHrAdmin.id, 'ENDORSE_APPLICATION', 'application', llApp2Anna.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-02-10T11:15:00'));
+  llAddLog(llTourismAdmin.id, 'SHORTLIST_APPLICATION', 'application', llApp2Anna.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-02-13T10:30:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_INTERVIEW', 'application', llApp2Anna.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-22T09:05:00'));
+
+  // --- Pedro (Position 3: Revenue Collection Officer II): SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUALIFIED → SELECTED → APPOINTED ---
+  llAddLog(applicant5.id, 'SUBMIT_APPLICATION', 'application', llApp3Pedro.id, null, { status: 'SUBMITTED', positionId: llPos3.id, applicantId: applicant5.id }, new Date('2026-02-02T11:00:00'));
+  llAddLog(llHrAdmin.id, 'ENDORSE_APPLICATION', 'application', llApp3Pedro.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-02-08T10:00:00'));
+  llAddLog(llOfficeAdmin.id, 'SHORTLIST_APPLICATION', 'application', llApp3Pedro.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-02-12T14:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_INTERVIEW', 'application', llApp3Pedro.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-18T09:00:00'));
+  llAddLog(llHrAdmin.id, 'COMPLETE_INTERVIEW', 'application', llApp3Pedro.id, { status: 'FOR_INTERVIEW' }, { status: 'INTERVIEWED' }, new Date('2026-02-25T16:00:00'));
+  llAddLog(llHrAdmin.id, 'SAVE_ASSESSMENT_SCORE', 'application', llApp3Pedro.id, null, { totalScore: 94.00 }, new Date('2026-02-26T09:00:00'));
+  llAddLog(llHrAdmin.id, 'QUALIFY_APPLICANTS', 'application', llApp3Pedro.id, { status: 'INTERVIEWED' }, { status: 'QUALIFIED' }, new Date('2026-02-27T10:00:00'));
+  llAddLog(llHrAdmin.id, 'SELECT_APPLICANTS', 'application', llApp3Pedro.id, { status: 'QUALIFIED' }, { status: 'SELECTED' }, new Date('2026-02-28T10:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_APPOINTMENT', 'application', llApp3Pedro.id, { status: 'SELECTED' }, { status: 'APPOINTED' }, new Date('2026-03-01T09:00:00'));
+
+  // --- Elena (Position 3): SUBMITTED → REJECTED ---
+  llAddLog(applicant6.id, 'SUBMIT_APPLICATION', 'application', llApp3Elena.id, null, { status: 'SUBMITTED', positionId: llPos3.id, applicantId: applicant6.id }, new Date('2026-02-04T13:00:00'));
+  llAddLog(llHrAdmin.id, 'REJECT_APPLICATION', 'application', llApp3Elena.id, { status: 'SUBMITTED' }, { status: 'REJECTED' }, new Date('2026-02-09T10:00:00'));
+
+  // --- Appointment Audit Logs ---
+  llAddLog(llHrAdmin.id, 'CREATE_APPOINTMENT', 'appointment', llAppointment1.id, null, { applicationId: llApp1Juan.id, positionId: llPos1.id, appointmentDate: '2026-03-15', oathDate: '2026-03-20', status: 'PENDING' }, new Date('2026-03-15T09:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_APPOINTMENT', 'appointment', llAppointment2.id, null, { applicationId: llApp3Pedro.id, positionId: llPos3.id, appointmentDate: '2026-03-01', oathDate: '2026-03-05', status: 'PENDING' }, new Date('2026-03-01T09:00:00'));
+  llAddLog(llHrAdmin.id, 'UPDATE_APPOINTMENT', 'appointment', llAppointment2.id, { status: 'PENDING' }, { status: 'COMPLETED' }, new Date('2026-03-10T10:30:00'));
+
+  // --- Final Requirement Verification Logs ---
+  llAddLog(llHrAdmin.id, 'VERIFY_REQUIREMENT', 'appointment', llAppointment1.id, null, { requirementName: 'Oath of Office', verified: true }, new Date('2026-03-21T10:00:00'));
+  llAddLog(llHrAdmin.id, 'VERIFY_REQUIREMENT', 'appointment', llAppointment1.id, null, { requirementName: 'Appointment Form', verified: true }, new Date('2026-03-21T10:05:00'));
+  llAddLog(llHrAdmin.id, 'VERIFY_REQUIREMENT', 'appointment', llAppointment1.id, null, { requirementName: 'Certificate of Assumption to Duty', verified: true }, new Date('2026-03-22T09:00:00'));
+  llAddLog(llHrAdmin.id, 'VERIFY_REQUIREMENT', 'appointment', llAppointment1.id, null, { requirementName: 'Birth Certificate', verified: true }, new Date('2026-03-22T09:30:00'));
+
+  for (const reqName of pedroFinalReqNames) {
+    llAddLog(llHrAdmin.id, 'VERIFY_REQUIREMENT', 'appointment', llAppointment2.id, null, { requirementName: reqName, verified: true }, new Date('2026-03-10T10:00:00'));
+  }
+
+  // --- Interview Audit Logs ---
+  llAddLog(llHrAdmin.id, 'CREATE_INTERVIEW', 'interview_schedule', llInterview1.id, null, { positionId: llPos1.id, scheduleDate: '2026-03-01', venue: 'Conference Room, 2nd Floor' }, new Date('2026-02-20T09:00:00'));
+  llAddLog(llHrAdmin.id, 'COMPLETE_INTERVIEW', 'interview_schedule', llInterview1.id, { status: 'SCHEDULED' }, { status: 'COMPLETED' }, new Date('2026-03-01T16:30:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_INTERVIEW', 'interview_schedule', llInterview2.id, null, { positionId: llPos2.id, scheduleDate: '2026-03-05', venue: "Mayor's Conference Room" }, new Date('2026-02-22T09:00:00'));
+  llAddLog(llHrAdmin.id, 'COMPLETE_INTERVIEW', 'interview_schedule', llInterview2.id, { status: 'SCHEDULED' }, { status: 'COMPLETED' }, new Date('2026-03-05T16:30:00'));
+  llAddLog(llHrAdmin.id, 'CREATE_INTERVIEW', 'interview_schedule', llInterview3.id, null, { positionId: llPos3.id, scheduleDate: '2026-02-25', venue: 'Conference Room, 2nd Floor' }, new Date('2026-02-18T09:00:00'));
+  llAddLog(llHrAdmin.id, 'COMPLETE_INTERVIEW', 'interview_schedule', llInterview3.id, { status: 'SCHEDULED' }, { status: 'COMPLETED' }, new Date('2026-02-25T16:30:00'));
+
+  // --- CSC Batch Audit Logs ---
+  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch1.id, null, { batchNumber: '2026-001', description: 'First quarter publication' }, new Date('2026-01-25T09:00:00'));
+  llAddLog(llHrAdmin.id, 'UPDATE', 'csc_publication_batch', llBatch1.id, { isPublished: false }, { isPublished: true }, new Date('2026-02-01T08:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch2.id, null, { batchNumber: '2026-002', description: 'Second quarter publication' }, new Date('2026-03-15T09:00:00'));
+
+  // --- Training Audit Logs ---
+  llAddLog(llHrAdmin.id, 'CREATE', 'training', llTraining1.id, null, { title: 'Coastal Resource Management Training', type: 'TECHNICAL' }, new Date('2026-02-05T09:00:00'));
+  llAddLog(llHrAdmin.id, 'UPDATE', 'training', llTraining1.id, { status: 'UPCOMING' }, { status: 'COMPLETED' }, new Date('2026-02-19T17:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'training', llTraining2.id, null, { title: 'Tourism Promotion and Digital Marketing', type: 'FOUNDATION' }, new Date('2026-03-10T09:00:00'));
+  llAddLog(llHrAdmin.id, 'UPDATE', 'training', llTraining2.id, { status: 'UPCOMING' }, { status: 'ONGOING' }, new Date('2026-03-24T08:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'training', llTraining3.id, null, { title: 'Local Government Executive Leadership Program', type: 'MANAGERIAL' }, new Date('2026-03-20T09:00:00'));
+
+  // Bulk insert all Lapu-Lapu audit logs
+  await prisma.auditLog.createMany({ data: llAuditLogs });
+  console.log(`Created ${llAuditLogs.length} audit logs for Lapu-Lapu pipeline`);
+
+  console.log('\n--- Lapu-Lapu City Full Pipeline Seed Complete ---');
   console.log('Seeding complete!');
 }
 

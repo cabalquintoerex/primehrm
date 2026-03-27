@@ -271,8 +271,8 @@ export function LoginPage() {
                 <p className="text-[11px] font-semibold text-amber-700 mb-2">Demo Accounts (temporary)</p>
                 <div className="space-y-1">
                   {[
-                    { role: 'HR Admin', user: 'cebucityhr', pass: 'hradmin123' },
-                    { role: 'Office Admin', user: 'cebucityeng', pass: 'office123' },
+                    { role: 'HR Admin', user: 'lapulapuhr', pass: 'hradmin123' },
+                    { role: 'Office Admin', user: 'lapulapueng', pass: 'office123' },
                     { role: 'Applicant', user: 'juandelacruz', pass: 'applicant123' },
                   ].map((acc) => (
                     <button

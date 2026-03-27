@@ -342,7 +342,7 @@ export function ProcessFlowPage() {
       {/* Role Permissions */}
       <div>
         <h2 className="text-xl font-bold tracking-tight mb-4">Role Permissions Summary</h2>
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

@@ -307,7 +307,7 @@ export function ApplicationDetailPage() {
 
             <CollapsibleSection title="Educational Background">
               {pds.education && pds.education.length > 0 ? (
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -342,7 +342,7 @@ export function ApplicationDetailPage() {
 
             <CollapsibleSection title="Civil Service Eligibility">
               {pds.eligibilities && pds.eligibilities.length > 0 ? (
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -377,7 +377,7 @@ export function ApplicationDetailPage() {
 
             <CollapsibleSection title="Work Experience">
               {pds.workExperience && pds.workExperience.length > 0 ? (
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>

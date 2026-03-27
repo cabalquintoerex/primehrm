@@ -140,7 +140,7 @@ export function AppointmentsPage() {
         </Card>
       ) : (
         <>
-          <Card>
+          <Card className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

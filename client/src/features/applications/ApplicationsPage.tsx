@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -42,14 +43,15 @@ export function ApplicationsPage() {
   const isOfficeAdmin = user?.role === 'LGU_OFFICE_ADMIN';
 
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [positionFilter, setPositionFilter] = useState<string>('ALL');
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery<PaginatedResponse<Application>>({
-    queryKey: ['applications', search, statusFilter, positionFilter, page],
+    queryKey: ['applications', debouncedSearch, statusFilter, positionFilter, page],
     queryFn: async () => {
-      const params: Record<string, any> = { search, page, limit: 20 };
+      const params: Record<string, any> = { search: debouncedSearch, page, limit: 20 };
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (positionFilter !== 'ALL') params.positionId = positionFilter;
       const { data } = await api.get('/applications', { params });
@@ -149,7 +151,7 @@ export function ApplicationsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

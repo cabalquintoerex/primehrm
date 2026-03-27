@@ -27,7 +27,7 @@
 - [x] React Router v6 routing with protected routes
 - [x] TanStack Query setup (5-min staleTime)
 - [x] Layout — Sidebar (collapsible, mobile responsive), Header with user dropdown
-- [x] Login page — modern split-screen design with LGU branding, four pillars display, slug-based LGU lookup, demo accounts (Cebu City: HR Admin, Office Admin, Applicant)
+- [x] Login page — modern split-screen design with LGU branding, four pillars display, slug-based LGU lookup, demo accounts (Lapu-Lapu: HR Admin, Office Admin, Applicant)
 - [x] Dashboard page — stat cards (placeholder)
 - [x] LGU Management page — full CRUD with search, pagination, logo upload (Sharp compression), header bg upload (Sharp 1920x600 WebP), dialogs (SUPER_ADMIN only)
 - [x] Department Management page — full CRUD with search, dialogs, LGU filter & selector for SUPER_ADMIN
@@ -65,6 +65,7 @@
 | Office Admin | cebucityeng | office123 | Cebu City (Engineering) |
 | Office Admin | cebucityhealth | office123 | Cebu City (Health) |
 | Office Admin | cebucitytreasury | office123 | Cebu City (Treasury) |
+| Office Admin | lapulaputourism | office123 | Lapu-Lapu (Tourism) |
 | Applicant | juandelacruz | applicant123 | — |
 | Applicant | mariagarcia | applicant123 | — |
 | Applicant | robertosantos | applicant123 | — |
@@ -269,7 +270,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 
 ---
 
-## Phase 7: Learning & Development — IN PROGRESS
+## Phase 7: Learning & Development — COMPLETED
 
 ### Database
 - [x] TrainingType enum (MANAGERIAL, SUPERVISORY, TECHNICAL, FOUNDATION)
@@ -379,13 +380,41 @@ SUPER_ADMIN can only **manage** (full CRUD) LGUs, Departments, and Users. All ot
 
 ---
 
-## Phase 8: Polish, Reports & Optimization — NOT STARTED
+## Phase 8: Polish, Reports & Optimization — COMPLETED
 
-- [ ] Dashboard analytics with real data
-- [ ] Reports with charts
-- [ ] Audit log viewer
-- [ ] Mobile responsiveness polish
-- [ ] Lazy loading & performance optimization
+### 8.1 Dashboard Revamp
+- [x] LGU Admin dashboard — stats cards (Open Positions, Total Applications, Pending/Completed Appointments), application pipeline badges, recent positions table, recent applicants table, upcoming trainings banner
+- [x] Super Admin dashboard — system overview (Total LGUs, Users, Departments, Positions)
+- [x] Server endpoint: `GET /api/dashboard/stats` — aggregated dashboard data in one call, role-scoped
+- [x] Sidebar LGU logo — shows uploaded LGU logo instead of Shield icon when available
+
+### 8.2 Reports with Charts (Recharts)
+- [x] Reports page with Tabs (Positions, Applications, Training)
+- [x] Position reports — donut chart by status, horizontal bar chart by department
+- [x] Application reports — pipeline bar chart (color-coded by status), monthly trend chart (last 6 months)
+- [x] Training reports — donut chart by type, bar chart by status
+- [x] Server endpoints: `GET /api/reports/positions`, `/api/reports/applications`, `/api/reports/trainings`
+- [x] Sidebar nav: "Reports" with BarChart3 icon (SUPER_ADMIN, LGU_HR_ADMIN)
+- [x] Route: /admin/reports
+- [x] shadcn/ui Tabs component added (`client/src/components/ui/tabs.tsx`)
+
+### 8.3 Audit Log Viewer
+- [x] Audit log page with filterable, paginated table
+- [x] Filters: search (user/action/entity), action dropdown, entity dropdown, date from/to, clear all
+- [x] Table columns: Date & Time, User (name + role), Action (color-coded badge), Entity (#id), Details (old → new changes)
+- [x] Server endpoints: `GET /api/audit-logs` (paginated, filterable), `GET /api/audit-logs/filters` (distinct actions/entities)
+- [x] LGU-scoped — HR admins only see logs from their LGU's users
+- [x] Sidebar nav: "Audit Logs" with ScrollText icon (SUPER_ADMIN, LGU_HR_ADMIN)
+- [x] Route: /admin/audit-logs
+
+### 8.4 Mobile Responsiveness
+- [x] `overflow-x-auto` added to all 19 table wrappers across 14 pages — tables scroll horizontally on small screens
+- [x] Dialog scrolling — `max-h-[90vh] overflow-y-auto` on DialogContent component (all dialogs)
+
+### 8.5 Performance Optimization
+- [x] Lazy loading — all 28 page components use `React.lazy()` + `Suspense` with spinner fallback
+- [x] Search debouncing (500ms) — `useDebounce` hook applied to all 9 search inputs
+- [x] Custom hook: `client/src/hooks/useDebounce.ts`
 
 ---
 
@@ -426,6 +455,7 @@ SUPER_ADMIN can only **manage** (full CRUD) LGUs, Departments, and Users. All ot
 | jspdf-autotable | jsPDF table plugin (installed, used by PDS) |
 | exceljs | Excel generation with styling (CSC Batch CS Form 9 export) |
 | file-saver | Client-side file download (used with exceljs) |
+| recharts | Charts & data visualization (Reports page) |
 | class-variance-authority / clsx / tailwind-merge | shadcn/ui utilities |
 
 ### Production Deployment Checklist
@@ -507,7 +537,7 @@ cd server && npm run db:generate
 
 ## Login Page Updates — COMPLETED
 
-- [x] Demo accounts updated to Cebu City: `cebucityhr`, `cebucityeng`, `juandelacruz`
+- [x] Demo accounts updated to Lapu-Lapu: `lapulapuhr`, `lapulapueng`, `juandelacruz`
 - [x] Super Admin account removed from demo accounts display
 
 ---
@@ -569,3 +599,63 @@ Seed file: `server/prisma/seed.ts` | Reference: `_Claude_To_Read/SeedData.md`
   - Appointment: `CREATE_APPOINTMENT`, `UPDATE_APPOINTMENT`, `VERIFY_REQUIREMENT`
   - Interview: `CREATE_INTERVIEW`, `COMPLETE_INTERVIEW`
   - CSC Batch & Training: `CREATE`, `UPDATE`
+
+---
+
+## Lapu-Lapu City Full Pipeline Seed Data
+
+Seed file: `server/prisma/seed.ts`
+
+### Departments (5)
+Human Resource Office, Engineering Office, Treasury Office, Tourism Office, Health Office
+
+### CSC Publication Batches
+| Batch | Status | Positions |
+|-------|--------|-----------|
+| 2026-001 | Published (Feb 1–16) | Civil Engineer III, Tourism Ops Officer III, Revenue Collection Officer II |
+| 2026-002 | Unpublished (Apr 1–16) | Nurse II, Administrative Officer III |
+
+### Positions (Lapu-Lapu)
+| Position | Dept | SG | Slots | Status |
+|----------|------|----|-------|--------|
+| Civil Engineer III | Engineering | 19 | 2 | OPEN |
+| Tourism Operations Officer III | Tourism | 18 | 1 | OPEN |
+| Revenue Collection Officer II | Treasury | 15 | 1 | FILLED |
+| Nurse II | Health | 15 | 1 | DRAFT |
+| Administrative Officer III | HR | 14 | 1 | DRAFT |
+
+### Applications Pipeline (9 total)
+| Position | Applicant | Status | Notes |
+|----------|-----------|--------|-------|
+| Civil Engineer III | Juan Dela Cruz | APPOINTED | Score 102.00, appointment PENDING (4/8 reqs verified) |
+| Civil Engineer III | Roberto Santos | SELECTED | Score 95.00, awaiting appointment |
+| Civil Engineer III | Anna Reyes | QUALIFIED | Score 86.50, not selected (slots full) |
+| Civil Engineer III | Pedro Villanueva | SHORTLISTED | Awaiting interview assignment |
+| Civil Engineer III | Elena Marcos | ENDORSED | Awaiting office admin screening |
+| Tourism Ops Officer III | Maria Garcia | INTERVIEWED | Awaiting assessment scoring |
+| Tourism Ops Officer III | Anna Reyes | FOR_INTERVIEW | Assigned to interview (no show) |
+| Revenue Collection Officer II | Pedro Villanueva | APPOINTED | Score 94.00, appointment COMPLETED (8/8 verified) |
+| Revenue Collection Officer II | Elena Marcos | REJECTED | Did not meet eligibility requirements |
+
+### Interviews (3)
+| Position | Date | Venue | Status |
+|----------|------|-------|--------|
+| Civil Engineer III | 2026-03-01 | Conference Room, 2nd Floor | COMPLETED (Juan ✓, Roberto ✓, Anna ✓) |
+| Tourism Ops Officer III | 2026-03-05 | Mayor's Conference Room | COMPLETED (Maria ✓, Anna ✗) |
+| Revenue Collection Officer II | 2026-02-25 | Conference Room, 2nd Floor | COMPLETED (Pedro ✓) |
+
+### Appointments (2)
+| Appointee | Position | Status | Requirements |
+|-----------|----------|--------|-------------|
+| Juan Dela Cruz | Civil Engineer III | PENDING | 4/8 verified (Oath, Appointment Form, Assumption to Duty, Birth Certificate) |
+| Pedro Villanueva | Revenue Collection Officer II | COMPLETED | 8/8 verified |
+
+### Training (3)
+| Title | Type | Status | Participants |
+|-------|------|--------|-------------|
+| Coastal Resource Management Training | TECHNICAL | COMPLETED | 4 (3 attended, 1 absent) |
+| Tourism Promotion and Digital Marketing | FOUNDATION | ONGOING | 3 |
+| Local Government Executive Leadership Program | MANAGERIAL | UPCOMING | 0 |
+
+### Audit Logs
+- 78 audit logs with full status transition tracking for all 9 applications

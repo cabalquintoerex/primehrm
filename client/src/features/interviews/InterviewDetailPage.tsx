@@ -264,7 +264,7 @@ export function InterviewDetailPage() {
           {!interview.applicants || interview.applicants.length === 0 ? (
             <p className="text-sm text-muted-foreground">No applicants assigned to this interview.</p>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

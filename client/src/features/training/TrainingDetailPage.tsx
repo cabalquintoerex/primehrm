@@ -290,7 +290,7 @@ export function TrainingDetailPage() {
           {!training.participants || training.participants.length === 0 ? (
             <p className="text-sm text-muted-foreground">No participants yet. Add participants to this training program.</p>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

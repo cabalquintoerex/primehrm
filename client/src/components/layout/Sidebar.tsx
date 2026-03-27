@@ -18,6 +18,8 @@ import {
   User,
   GraduationCap,
   FileStack,
+  BarChart3,
+  ScrollText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -100,6 +102,18 @@ const navItems: NavItem[] = [
     icon: GraduationCap,
     roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
   },
+  {
+    title: 'Reports',
+    href: '/admin/reports',
+    icon: BarChart3,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+  },
+  {
+    title: 'Audit Logs',
+    href: '/admin/audit-logs',
+    icon: ScrollText,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+  },
   // Applicant nav items
   {
     title: 'Dashboard',
@@ -137,7 +151,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Logo / Brand */}
       <div className="flex h-12 items-center border-b px-4">
         <Link to={user?.role === 'APPLICANT' ? '/applicant/dashboard' : '/admin/dashboard'} className="flex items-center gap-2">
-          <Shield className="h-6 w-6 text-primary" />
+          {user?.lgu?.logo ? (
+            <img src={user.lgu.logo} alt={user.lgu.name} className="h-6 w-6 rounded object-cover" />
+          ) : (
+            <Shield className="h-6 w-6 text-primary" />
+          )}
           <div className="flex flex-col">
             <span className="text-sm font-bold text-primary">PRIME-HRM</span>
             {user?.lgu && (

@@ -21,6 +21,9 @@ import assessmentRoutes from './routes/assessment.routes';
 import appointmentRoutes from './routes/appointment.routes';
 import trainingRoutes from './routes/training.routes';
 import cscBatchRoutes from './routes/cscBatch.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+import reportRoutes from './routes/report.routes';
+import auditLogRoutes from './routes/auditLog.routes';
 import { errorHandler } from './middleware/errorHandler';
 import prisma from './config/database';
 
@@ -54,6 +57,9 @@ app.use('/api/assessments', assessmentRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/trainings', trainingRoutes);
 app.use('/api/csc-batches', cscBatchRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {

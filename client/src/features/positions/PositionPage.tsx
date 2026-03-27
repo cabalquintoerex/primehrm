@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -98,6 +99,7 @@ export function PositionPage() {
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -107,9 +109,9 @@ export function PositionPage() {
   const [docRequirements, setDocRequirements] = useState<DocRequirement[]>([]);
 
   const { data, isLoading } = useQuery<PaginatedResponse<Position>>({
-    queryKey: ['positions', search, statusFilter, page],
+    queryKey: ['positions', debouncedSearch, statusFilter, page],
     queryFn: async () => {
-      const params: Record<string, any> = { search, page, limit: 20 };
+      const params: Record<string, any> = { search: debouncedSearch, page, limit: 20 };
       if (statusFilter !== 'ALL') params.status = statusFilter;
       const { data } = await api.get('/positions', { params });
       return data;
@@ -308,7 +310,7 @@ export function PositionPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

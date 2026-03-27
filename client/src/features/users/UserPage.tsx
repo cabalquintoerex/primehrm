@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,6 +48,7 @@ export function UserPage() {
   const { user: currentUser } = useAuthStore();
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [filterLguId, setFilterLguId] = useState('');
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -65,9 +67,9 @@ export function UserPage() {
   });
 
   const { data, isLoading } = useQuery<PaginatedResponse<User>>({
-    queryKey: ['users', search, page, filterLguId],
+    queryKey: ['users', debouncedSearch, page, filterLguId],
     queryFn: async () => {
-      const params: any = { search, page, limit: 20 };
+      const params: any = { search: debouncedSearch, page, limit: 20 };
       if (filterLguId) params.lguId = filterLguId;
       const { data } = await api.get('/users', { params });
       return data;
@@ -174,7 +176,7 @@ export function UserPage() {
         )}
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

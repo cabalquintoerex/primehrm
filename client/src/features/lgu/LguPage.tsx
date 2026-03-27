@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +32,7 @@ type LguFormData = z.infer<typeof lguSchema>;
 export function LguPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLgu, setEditingLgu] = useState<Lgu | null>(null);
@@ -43,9 +45,9 @@ export function LguPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const { data, isLoading } = useQuery<PaginatedResponse<Lgu>>({
-    queryKey: ['lgus', search, page],
+    queryKey: ['lgus', debouncedSearch, page],
     queryFn: async () => {
-      const { data } = await api.get('/lgus', { params: { search, page, limit: 20 } });
+      const { data } = await api.get('/lgus', { params: { search: debouncedSearch, page, limit: 20 } });
       return data;
     },
   });
@@ -212,7 +214,7 @@ export function LguPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

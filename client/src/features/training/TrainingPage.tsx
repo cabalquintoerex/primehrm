@@ -24,6 +24,7 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/stores/authStore';
+import { useDebounce } from '@/hooks/useDebounce';
 import type { Training, TrainingStatus, TrainingType, PaginatedResponse } from '@/types';
 
 const trainingSchema = z.object({
@@ -59,6 +60,7 @@ export function TrainingPage() {
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [page, setPage] = useState(1);
@@ -68,9 +70,9 @@ export function TrainingPage() {
   const [deletingTraining, setDeletingTraining] = useState<Training | null>(null);
 
   const { data, isLoading } = useQuery<PaginatedResponse<Training>>({
-    queryKey: ['trainings', search, statusFilter, typeFilter, page],
+    queryKey: ['trainings', debouncedSearch, statusFilter, typeFilter, page],
     queryFn: async () => {
-      const params: Record<string, any> = { search, page, limit: 20 };
+      const params: Record<string, any> = { search: debouncedSearch, page, limit: 20 };
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (typeFilter !== 'ALL') params.type = typeFilter;
       const { data } = await api.get('/trainings', { params });
@@ -250,7 +252,7 @@ export function TrainingPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

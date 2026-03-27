@@ -20,6 +20,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Pencil, Trash2, Search, Loader2, Eye, FileStack, CheckCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
+import { useDebounce } from '@/hooks/useDebounce';
 import type { CscPublicationBatch, PaginatedResponse } from '@/types';
 
 export function CscBatchPage() {
@@ -28,6 +29,7 @@ export function CscBatchPage() {
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [publishedFilter, setPublishedFilter] = useState<string>('ALL');
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -37,9 +39,9 @@ export function CscBatchPage() {
   const [formData, setFormData] = useState({ batchNumber: '', description: '', openDate: '' });
 
   const { data, isLoading } = useQuery<PaginatedResponse<CscPublicationBatch>>({
-    queryKey: ['csc-batches', search, publishedFilter, page],
+    queryKey: ['csc-batches', debouncedSearch, publishedFilter, page],
     queryFn: async () => {
-      const params: Record<string, any> = { search, page, limit: 20 };
+      const params: Record<string, any> = { search: debouncedSearch, page, limit: 20 };
       if (publishedFilter !== 'ALL') params.published = publishedFilter === 'PUBLISHED' ? 'true' : 'false';
       const { data } = await api.get('/csc-batches', { params });
       return data;
@@ -193,7 +195,7 @@ export function CscBatchPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
