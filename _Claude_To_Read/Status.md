@@ -301,6 +301,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 ### Not Yet Done
 - [ ] Training records integration with PDS Section VII
 - [ ] Training reports & certificates
+- [ ] L&D Module Overhaul — public training portal, interest registration, certificate generation (see Plan.md Phase 7 Expansion)
 
 ---
 
@@ -518,6 +519,53 @@ cd server && npm run db:generate
 | DOM nesting (div in p) | Badge renders div, was inside p tag | Changed parent to span/div |
 | Prisma Decimal as string | Prisma serializes Decimal fields as strings | Use `Number()` conversion for display |
 | Seed audit logs showing generic CREATE/UPDATE | Seed used wrong action names (`CREATE`/`UPDATE`) and entity case (`Application`) | Fixed to match real controller actions (`SUBMIT_APPLICATION`, `ENDORSE_APPLICATION`, etc.) and lowercase entity (`application`) |
+| PDS stale data across user sessions | TanStack Query cache persists after logout — new user sees previous user's cached PDS | Added `queryClient.clear()` on logout in Header.tsx |
+
+---
+
+## Login Page Redesign — COMPLETED
+
+- [x] Split-screen layout: green branded left panel + white login right panel
+- [x] Left panel: emerald gradient background with white text, subtle Shield pattern
+- [x] LGU logo (24px, rounded-2xl), name (2xl-3xl bold), address with MapPin icon, contact with Phone icon, email with Mail icon — all centered
+- [x] PRIME-HRM branding with glass-effect icon container, HRM in emerald-200
+- [x] Removed Performance Management and Rewards & Recognition pillar cards
+- [x] 2 active pillars (RSP + L&D) displayed side-by-side with glass-effect styling (bg-white/10 backdrop-blur)
+- [x] Right panel: clean white background, login form, demo accounts
+- [x] Demo accounts updated to Lapu-Lapu: `lapulapuhr`, `lapulapueng`, `juandelacruz`
+
+---
+
+## Lapu-Lapu Seed Data Expansion — COMPLETED
+
+- [x] 5 departments: HR, Engineering, Treasury, Tourism, Health
+- [x] Tourism Office Admin account (`lapulaputourism` / `office123`)
+- [x] 4 CSC Batches — all published (2026-001 through 2026-004)
+- [x] 13 positions across 4 batches (12 OPEN + 1 FILLED):
+  - Batch 1 (Feb): Civil Engineer III, Tourism Ops Officer III, Revenue Collection Officer II
+  - Batch 2 (Mar): Nurse II, Administrative Officer III
+  - Batch 3 (Apr): Fire Marshal I, Social Welfare Officer II, IT Officer I
+  - Batch 4 (May): Environmental Management Specialist II, Administrative Aide VI (2 slots), Tourism Promotion Officer I, Driver I, Utility Worker I (2 slots)
+- [x] 9 applications with full pipeline status transitions + 78 audit logs
+- [x] 3 interviews, 4 assessments, 2 appointments, 3 trainings
+
+---
+
+## Upcoming Work (To Do)
+
+### Appointment Document Annexes
+- [ ] ANNEX A — DBM-CSC Form No. 1, Position Description Form (Revised 2017) — Fillable
+- [ ] ANNEX B — SS Porma Blg. 32, Narebisa 2025 — Panunumpa sa Katungkulan — Generate
+- [ ] ANNEX C — CS Form No. 33-A, Revised 2025 — Appointment Form (Regulated) — Generate
+- [ ] ANNEX I — CS Form No. 1, Revised 2025 — Appointment Transmittal and Action Form — Generate
+- [ ] ANNEX L — CS Form No. 4, Revised 2025 — Certification of Assumption to Duty — Generate
+
+### L&D Module Overhaul
+- [ ] Module switcher after login (RSP / L&D) + toggle in sidebar/header
+- [ ] Public training portal at `/:lgu-slug/trainings`
+- [ ] Training interest registration (any logged-in user)
+- [ ] HR manages interest submissions (approve/reject/waitlist)
+- [ ] Training certificate PDF generation for completed participants
 
 ---
 

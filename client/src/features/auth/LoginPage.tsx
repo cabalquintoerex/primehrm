@@ -8,7 +8,7 @@ import api from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Loader2, Users, Award, BookOpen, TrendingUp } from 'lucide-react';
+import { Shield, Loader2, Users, BookOpen, MapPin, Phone, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import type { Lgu } from '@/types';
@@ -28,7 +28,6 @@ const pillars = [
     color: 'text-emerald-600',
     bg: 'bg-emerald-50',
     border: 'border-emerald-100 hover:border-emerald-300',
-    enabled: true,
   },
   {
     icon: BookOpen,
@@ -37,25 +36,6 @@ const pillars = [
     color: 'text-blue-600',
     bg: 'bg-blue-50',
     border: 'border-blue-100 hover:border-blue-300',
-    enabled: true,
-  },
-  {
-    icon: TrendingUp,
-    title: 'Performance Management',
-    description: 'Results-oriented performance systems',
-    color: 'text-gray-400',
-    bg: 'bg-gray-50',
-    border: 'border-gray-100',
-    enabled: false,
-  },
-  {
-    icon: Award,
-    title: 'Rewards & Recognition',
-    description: 'Recognizing excellence in public service',
-    color: 'text-gray-400',
-    bg: 'bg-gray-50',
-    border: 'border-gray-100',
-    enabled: false,
   },
 ];
 
@@ -107,112 +87,120 @@ export function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-white via-gray-50 to-emerald-50/30 overflow-hidden">
-      {/* Background pattern — colorful subtle icons */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-16 left-8 opacity-[0.05]">
-          <Shield className="h-72 w-72 text-emerald-500" strokeWidth={0.5} />
+    <div className="relative min-h-screen flex flex-col lg:flex-row overflow-hidden">
+      {/* Left — Green branded section */}
+      <div className="relative flex-1 bg-gradient-to-br from-emerald-600 via-emerald-700 to-green-800 text-white overflow-hidden">
+        {/* Background pattern */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-16 left-8 opacity-[0.08]">
+            <Shield className="h-72 w-72 text-white" strokeWidth={0.5} />
+          </div>
+          <div className="absolute bottom-8 right-8 opacity-[0.05]">
+            <Shield className="h-96 w-96 text-white" strokeWidth={0.3} />
+          </div>
+          <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
+          <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl" />
         </div>
-        <div className="absolute bottom-8 right-8 opacity-[0.04]">
-          <Shield className="h-96 w-96 text-blue-500" strokeWidth={0.3} />
-        </div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.025]">
-          <Shield className="h-[550px] w-[550px] text-emerald-600" strokeWidth={0.2} />
-        </div>
-        {/* Gradient orbs for depth */}
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-emerald-200/20 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-blue-200/15 blur-3xl" />
-      </div>
 
-      {/* Main content — two sections flowing naturally */}
-      <div className="relative z-10 flex min-h-screen items-center">
-        <div className="mx-auto flex w-full max-w-6xl flex-col lg:flex-row items-center gap-12 xl:gap-20 px-6 py-12">
-
-          {/* Left — Branding & Description */}
-          <div className="flex-1 text-center lg:text-left">
+        <div className="relative z-10 flex items-center justify-center min-h-screen lg:min-h-0 lg:h-full px-8 py-12">
+          <div className="w-full max-w-md text-center">
             {/* LGU Logo & Name — large and prominent (for LGU login) */}
             {slug && lgu && (
-              <div className="mb-6">
-                <div className="flex items-center gap-4 justify-center lg:justify-start mb-4">
+              <div className="mb-8">
+                <div className="flex flex-col items-center gap-4 mb-5">
                   {lgu.logo ? (
                     <img
                       src={lgu.logo}
                       alt={lgu.name}
-                      className="h-16 w-16 rounded-full border-2 border-emerald-200 object-cover bg-emerald-50 shadow-md"
+                      className="h-24 w-24 rounded-2xl border-2 border-white/30 object-cover bg-white/10 shadow-lg"
                     />
                   ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50 shadow-md">
-                      <Shield className="h-8 w-8 text-emerald-600" />
+                    <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-white/30 bg-white/10 shadow-lg">
+                      <Shield className="h-12 w-12 text-white" />
                     </div>
                   )}
-                  <div className="text-left">
-                    <h1 className="text-xl xl:text-2xl font-bold tracking-tight text-gray-900">{lgu.name}</h1>
+                  <div className="text-center">
+                    <h1 className="text-2xl xl:text-3xl font-bold tracking-tight text-white">{lgu.name}</h1>
                     {lgu.address && (
-                      <p className="text-sm text-gray-500 mt-1">{lgu.address}</p>
+                      <div className="flex items-center gap-1.5 mt-2 justify-center text-emerald-100">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        <p className="text-sm">{lgu.address}</p>
+                      </div>
                     )}
+                    <div className="flex items-center gap-4 mt-1.5 justify-center text-emerald-200/70">
+                      {lgu.contactNumber && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          <span className="text-xs">{lgu.contactNumber}</span>
+                        </div>
+                      )}
+                      {lgu.email && (
+                        <div className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          <span className="text-xs">{lgu.email}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="h-px w-full max-w-xs bg-gradient-to-r from-transparent via-emerald-200 to-transparent lg:max-w-sm mx-auto lg:mx-0" />
+                <div className="h-px w-full max-w-xs bg-gradient-to-r from-transparent via-white/20 to-transparent lg:max-w-sm mx-auto" />
               </div>
             )}
 
             {/* PRIME-HRM Title — secondary when LGU is present */}
             <div className="mb-6">
-              <div className="flex items-center gap-3 mb-3 justify-center lg:justify-start">
-                <div className={`flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-200/50 ${slug && lgu ? 'h-9 w-9' : 'h-11 w-11'}`}>
+              <div className="flex items-center gap-3 mb-3 justify-center">
+                <div className={`flex items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm ${slug && lgu ? 'h-9 w-9' : 'h-11 w-11'}`}>
                   <Shield className={`text-white ${slug && lgu ? 'h-5 w-5' : 'h-6 w-6'}`} />
                 </div>
-                <h2 className={`font-bold tracking-tight ${slug && lgu ? 'text-xl text-gray-700' : 'text-3xl xl:text-4xl text-gray-900'}`}>
-                  PRIME-<span className="text-emerald-600">HRM</span>
+                <h2 className={`font-bold tracking-tight text-white ${slug && lgu ? 'text-xl' : 'text-3xl xl:text-4xl'}`}>
+                  PRIME-<span className="text-emerald-200">HRM</span>
                 </h2>
               </div>
-              <p className={`leading-relaxed max-w-lg mx-auto lg:mx-0 ${slug && lgu ? 'text-sm text-gray-500' : 'text-base text-gray-600'}`}>
+              <p className={`leading-relaxed max-w-lg mx-auto ${slug && lgu ? 'text-sm text-emerald-100/80' : 'text-base text-emerald-100'}`}>
                 Program to Institutionalize Meritocracy and Excellence in
                 Human Resource Management
               </p>
             </div>
 
             {/* Description */}
-            <p className="text-sm text-gray-400 leading-relaxed max-w-md mb-8 mx-auto lg:mx-0 hidden lg:block">
+            <p className="text-sm text-emerald-200/60 leading-relaxed max-w-md mb-8 mx-auto hidden lg:block">
               Elevating public sector HR by assessing, assisting, and awarding
               agencies across four core pillars — shifting HR from transactional
               to strategic for better public service.
             </p>
 
-            {/* Four Pillars */}
-            <div className="hidden lg:grid grid-cols-2 gap-3 max-w-lg">
+            {/* Core Pillars */}
+            <div className="hidden lg:flex gap-3 max-w-lg mx-auto">
               {pillars.map((pillar) => (
                 <div
                   key={pillar.title}
-                  className={`relative rounded-lg bg-white border p-3.5 transition-all hover:shadow-sm ${pillar.border} ${!pillar.enabled ? 'opacity-50' : ''}`}
+                  className="flex-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/10 p-3.5 transition-all hover:bg-white/15"
                 >
-                  <div className={`inline-flex items-center justify-center h-8 w-8 rounded-lg ${pillar.bg} mb-2`}>
-                    <pillar.icon className={`h-4 w-4 ${pillar.color}`} />
+                  <div className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white/15 mb-2">
+                    <pillar.icon className="h-4 w-4 text-emerald-200" />
                   </div>
-                  <h3 className={`text-sm font-semibold mb-0.5 ${pillar.enabled ? 'text-gray-800' : 'text-gray-400'}`}>
+                  <h3 className="text-sm font-semibold mb-0.5 text-white">
                     {pillar.title}
                   </h3>
-                  <p className={`text-xs ${pillar.enabled ? 'text-gray-400' : 'text-gray-300'}`}>
+                  <p className="text-xs text-emerald-200/60">
                     {pillar.description}
                   </p>
-                  {!pillar.enabled && (
-                    <span className="absolute top-2.5 right-2.5 text-[10px] font-medium text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">
-                      Soon
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
 
             {/* Footer */}
-            <p className="mt-8 text-xs text-gray-400 hidden lg:block">
+            <p className="mt-8 text-xs text-emerald-200/40 hidden lg:block">
               In compliance with the Civil Service Commission &mdash; Republic of the Philippines
             </p>
           </div>
+        </div>
+      </div>
 
-          {/* Right — Login Form */}
-          <div className="w-full max-w-sm lg:max-w-md">
-            <div className="rounded-2xl bg-white shadow-xl shadow-emerald-100/40 border border-gray-100/80 p-8 lg:p-10">
+      {/* Right — White login section */}
+      <div className="flex items-center justify-center bg-white lg:w-[480px] xl:w-[520px] px-6 py-12 lg:py-0 min-h-screen lg:min-h-0 lg:h-auto">
+        <div className="w-full max-w-sm">
               {/* Green accent bar */}
               <div className="h-1 w-12 rounded-full bg-gradient-to-r from-emerald-500 to-green-400 mb-6" />
               <div className="mb-6">
@@ -290,9 +278,6 @@ export function LoginPage() {
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>

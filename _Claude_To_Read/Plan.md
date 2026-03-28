@@ -597,37 +597,70 @@ primehrm/
 ### Phase 6: RSP — Appointment & Onboarding
 **Goal**: Generate appointment documents, manage final requirements
 
-- [ ] Generate Appointment Form (CS Form 33-B)
-- [ ] Generate Oath of Office (CS Form 32)
-- [ ] Set final requirements for accepted applicants
+- [x] Generate Appointment Form (CS Form 33-B)
+- [x] Generate Oath of Office (CS Form 32)
+- [x] Set final requirements for accepted applicants
 - [ ] Email final requirements to accepted applicants
 - [ ] Applicant uploads final requirement documents
-- [ ] HR verifies & marks requirements as complete
+- [x] HR verifies & marks requirements as complete
 - [ ] Position reports (filled, open, pipeline)
 
-### Phase 7: Learning & Development
+#### Appointment Document Annexes (To Do)
+- [ ] **ANNEX A** — DBM-CSC Form No. 1, Position Description Form (Revised 2017) — Fillable/Generate
+- [ ] **ANNEX B** — SS Porma Blg. 32, Narebisa 2025 — Panunumpa sa Katungkulan (Filipino Oath of Office) — Generate
+- [ ] **ANNEX C** — CS Form No. 33-A, Revised 2025 — Appointment Form (Regulated) — Generate
+- [ ] **ANNEX I** — CS Form No. 1, Revised 2025 — Appointment Transmittal and Action Form — Generate
+- [ ] **ANNEX L** — CS Form No. 4, Revised 2025 — Certification of Assumption to Duty — Generate
+
+### Phase 7: Learning & Development — COMPLETED (Core)
 **Goal**: Training management, assignment, and monitoring
 
-- [ ] Training CRUD (HR-managed and department-managed)
-- [ ] Training types (internal, external, online)
-- [ ] Department assigns trainings to employees
-- [ ] Training scheduling & calendar view
-- [ ] Training monitoring dashboard
-- [ ] Employees submit post-training reports & attendance
-- [ ] Training completion tracking
+- [x] Training CRUD (HR-managed)
+- [x] Training types (Managerial, Supervisory, Technical, Foundation)
+- [x] Participant management (add/remove participants)
+- [x] Attendance marking & completion tracking
+- [x] Training monitoring (stats, status filters)
 
-### Phase 8: Polish, Reports & Optimization
+### Phase 7 Expansion: L&D Module Overhaul (To Do)
+**Goal**: Separate L&D module with public training portal, interest registration, and certificate generation
+
+#### Module Switcher
+- [ ] Post-login module selection page: **RSP** or **L&D** — both share the same login
+- [ ] Module toggle/switcher in sidebar or header to switch between RSP and L&D without re-logging
+- [ ] Role-based module access (HR Admin sees both, Office Admin sees both, Applicant sees L&D public portal)
+
+#### Public Training Portal
+- [ ] Public training listings at `/:lgu-slug/trainings` (similar to careers page)
+- [ ] Training detail page with description, dates, venue, requirements, available slots
+- [ ] Search & filter on public trainings page (by type, date, status)
+- [ ] LGU branding on training portal (logo, header bg)
+
+#### Training Interest & Registration
+- [ ] "Register Interest" button on training detail page
+- [ ] Any logged-in user (Applicant, HR Admin, Office Admin) can submit interest
+- [ ] Interest submission form (optional: motivation, relevant background)
+- [ ] User dashboard: view submitted training interests with status tracking
+- [ ] HR Admin: manage interest submissions — approve, reject, waitlist
+- [ ] Auto-convert approved interests to training participants
+
+#### Training Certificate Generation
+- [ ] Generate training certificate PDF for completed participants
+- [ ] Certificate template with: LGU header, training title, participant name, dates, hours, type, conducted by, signatory
+- [ ] Bulk certificate generation for all completed participants of a training
+- [ ] Individual certificate download from participant detail
+
+### Phase 8: Polish, Reports & Optimization — COMPLETED
 **Goal**: Dashboards, analytics, performance, mobile responsiveness
 
-- [ ] Admin dashboard — stats cards, charts (positions, applications, trainings)
-- [ ] Position reports with charts
-- [ ] Application pipeline reports
-- [ ] Training reports
-- [ ] Audit log viewer with filters
-- [ ] Mobile responsiveness (sidebar collapse, mobile nav)
-- [ ] Lazy loading routes (React.lazy + Suspense)
-- [ ] Server-side pagination across all list endpoints
-- [ ] Search debouncing (500ms)
+- [x] Admin dashboard — stats cards, charts (positions, applications, trainings)
+- [x] Position reports with charts
+- [x] Application pipeline reports
+- [x] Training reports
+- [x] Audit log viewer with filters
+- [x] Mobile responsiveness (table scroll, dialog scroll)
+- [x] Lazy loading routes (React.lazy + Suspense)
+- [x] Server-side pagination across all list endpoints
+- [x] Search debouncing (500ms)
 - [ ] Loading states & error boundaries
 
 ---

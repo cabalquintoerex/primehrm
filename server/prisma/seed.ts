@@ -2324,14 +2324,42 @@ async function main() {
     data: {
       batchNumber: '2026-002',
       description: 'Second quarter publication — Health and HR positions',
-      openDate: new Date('2026-04-01'),
-      closeDate: new Date('2026-04-16'),
-      isPublished: false,
+      openDate: new Date('2026-03-15'),
+      closeDate: new Date('2026-03-30'),
+      isPublished: true,
+      publishedAt: new Date('2026-03-15'),
       lguId: lapulapu.id,
       createdBy: llHrAdmin.id,
     },
   });
-  console.log('Created 2 Lapu-Lapu CSC Batches');
+
+  const llBatch3 = await prisma.cscPublicationBatch.create({
+    data: {
+      batchNumber: '2026-003',
+      description: 'Third quarter publication — Public safety, social services, and IT positions',
+      openDate: new Date('2026-04-01'),
+      closeDate: new Date('2026-04-16'),
+      isPublished: true,
+      publishedAt: new Date('2026-04-01'),
+      lguId: lapulapu.id,
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  const llBatch4 = await prisma.cscPublicationBatch.create({
+    data: {
+      batchNumber: '2026-004',
+      description: 'Fourth quarter publication — Environment and administrative support',
+      openDate: new Date('2026-05-01'),
+      closeDate: new Date('2026-05-16'),
+      isPublished: true,
+      publishedAt: new Date('2026-05-01'),
+      lguId: lapulapu.id,
+      createdBy: llHrAdmin.id,
+    },
+  });
+
+  console.log('Created 4 Lapu-Lapu CSC Batches (all published)');
 
   // --- Document Requirements Template ---
   const llDocReqs = [
@@ -2430,7 +2458,7 @@ async function main() {
     await prisma.positionDocumentRequirement.create({ data: { positionId: llPos3.id, ...req } });
   }
 
-  // Position 4: Nurse II (Health, 1 slot, DRAFT — Batch 2)
+  // Position 4: Nurse II (Health, 1 slot, OPEN — Batch 2)
   const llPos4 = await prisma.position.create({
     data: {
       title: 'Nurse II',
@@ -2444,9 +2472,9 @@ async function main() {
       competency: 'Patient care, community health nursing, immunization, health education',
       placeOfAssignment: 'City Health Office, Lapu-Lapu City',
       description: 'Provides nursing care services at the City Health Office, implements community health programs, and supports immunization and maternal health initiatives.',
-      status: 'DRAFT',
-      openDate: new Date('2026-04-01'),
-      closeDate: new Date('2026-04-16'),
+      status: 'OPEN',
+      openDate: new Date('2026-03-15'),
+      closeDate: new Date('2026-03-30'),
       slots: 1,
       lguId: lapulapu.id,
       departmentId: llHealthDept?.id,
@@ -2458,7 +2486,7 @@ async function main() {
     await prisma.positionDocumentRequirement.create({ data: { positionId: llPos4.id, ...req } });
   }
 
-  // Position 5: Administrative Officer III (HR, 1 slot, DRAFT — Batch 2)
+  // Position 5: Administrative Officer III (HR, 1 slot, OPEN — Batch 2)
   const llPos5 = await prisma.position.create({
     data: {
       title: 'Administrative Officer III',
@@ -2472,9 +2500,9 @@ async function main() {
       competency: 'Office administration, records management, personnel coordination, document processing',
       placeOfAssignment: 'Human Resource Office, Lapu-Lapu City Hall',
       description: 'Provides administrative support to the HR Office including personnel records management, leave administration, and employee documentation.',
-      status: 'DRAFT',
-      openDate: new Date('2026-04-01'),
-      closeDate: new Date('2026-04-16'),
+      status: 'OPEN',
+      openDate: new Date('2026-03-15'),
+      closeDate: new Date('2026-03-30'),
       slots: 1,
       lguId: lapulapu.id,
       departmentId: llHrDept?.id,
@@ -2486,7 +2514,231 @@ async function main() {
     await prisma.positionDocumentRequirement.create({ data: { positionId: llPos5.id, ...req } });
   }
 
-  console.log('Created 5 positions for Lapu-Lapu (2 open + 1 filled + 2 draft)');
+  // Position 6: Fire Marshal I (Engineering, 1 slot, OPEN — Batch 3)
+  const llPos6 = await prisma.position.create({
+    data: {
+      title: 'Fire Marshal I',
+      itemNumber: 'LLC-FM1-06-2026',
+      salaryGrade: 14,
+      monthlySalary: 39672,
+      education: "Bachelor's degree in Criminology, Fire Technology, or related field",
+      training: '4 hours of relevant training',
+      experience: '1 year of relevant experience',
+      eligibility: 'Career Service Professional / Second Level Eligibility',
+      competency: 'Fire prevention, fire investigation, building code enforcement, emergency response',
+      placeOfAssignment: 'City Fire Station, Lapu-Lapu City',
+      description: 'Conducts fire safety inspections, issues fire safety evaluation clearances, and investigates fire incidents within the city jurisdiction.',
+      status: 'OPEN',
+      openDate: new Date('2026-04-01'),
+      closeDate: new Date('2026-04-16'),
+      slots: 1,
+      lguId: lapulapu.id,
+      departmentId: llEngDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch3.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos6.id, ...req } });
+  }
+
+  // Position 7: Social Welfare Officer II (Tourism repurposed as social, 1 slot, OPEN — Batch 3)
+  const llPos7 = await prisma.position.create({
+    data: {
+      title: 'Social Welfare Officer II',
+      itemNumber: 'LLC-SWO2-07-2026',
+      salaryGrade: 15,
+      monthlySalary: 42159,
+      education: 'Bachelor of Science in Social Work',
+      training: '4 hours of relevant training',
+      experience: '1 year of relevant experience',
+      eligibility: 'RA 1080 (Registered Social Worker)',
+      competency: 'Social case management, community development, counseling, disaster response coordination',
+      placeOfAssignment: 'City Social Welfare Office, Lapu-Lapu City',
+      description: 'Provides social welfare services for vulnerable populations including PWDs, solo parents, senior citizens, and disaster-affected families in the city.',
+      status: 'OPEN',
+      openDate: new Date('2026-04-01'),
+      closeDate: new Date('2026-04-16'),
+      slots: 2,
+      lguId: lapulapu.id,
+      departmentId: llTourismDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch3.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos7.id, ...req } });
+  }
+
+  // Position 8: Information Technology Officer I (HR/IT, 1 slot, OPEN — Batch 3)
+  const llPos8 = await prisma.position.create({
+    data: {
+      title: 'Information Technology Officer I',
+      itemNumber: 'LLC-ITO1-08-2026',
+      salaryGrade: 19,
+      monthlySalary: 54461,
+      education: 'Bachelor of Science in Information Technology, Computer Science, or related field',
+      training: '8 hours of relevant training',
+      experience: '2 years of relevant experience',
+      eligibility: 'Career Service Professional / Second Level Eligibility',
+      competency: 'IT infrastructure management, systems administration, cybersecurity, database management, web development',
+      placeOfAssignment: 'Human Resource Office (IT Unit), Lapu-Lapu City Hall',
+      description: 'Manages the IT infrastructure and information systems of the city government. Oversees network administration, cybersecurity, database management, and provides technical support to all departments.',
+      status: 'OPEN',
+      openDate: new Date('2026-04-01'),
+      closeDate: new Date('2026-04-16'),
+      slots: 1,
+      lguId: lapulapu.id,
+      departmentId: llHrDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch3.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos8.id, ...req } });
+  }
+
+  // Position 9: Environmental Management Specialist II (Engineering, 1 slot, OPEN — Batch 4)
+  const llPos9 = await prisma.position.create({
+    data: {
+      title: 'Environmental Management Specialist II',
+      itemNumber: 'LLC-EMS2-09-2026',
+      salaryGrade: 16,
+      monthlySalary: 45203,
+      education: "Bachelor's degree in Environmental Science, Marine Biology, or related field",
+      training: '4 hours of relevant training',
+      experience: '1 year of relevant experience',
+      eligibility: 'Career Service Professional / Second Level Eligibility',
+      competency: 'Environmental impact assessment, coastal zone management, solid waste management, regulatory compliance',
+      placeOfAssignment: 'City Environment and Natural Resources Office, Lapu-Lapu City',
+      description: 'Implements environmental programs including coastal resource management, solid waste reduction, environmental compliance monitoring, and marine sanctuary protection for Mactan Island.',
+      status: 'OPEN',
+      openDate: new Date('2026-05-01'),
+      closeDate: new Date('2026-05-16'),
+      slots: 1,
+      lguId: lapulapu.id,
+      departmentId: llEngDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch4.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos9.id, ...req } });
+  }
+
+  // Position 10: Administrative Aide VI (Treasury, 2 slots, OPEN — Batch 4)
+  const llPos10 = await prisma.position.create({
+    data: {
+      title: 'Administrative Aide VI',
+      itemNumber: 'LLC-AA6-10-2026',
+      salaryGrade: 6,
+      monthlySalary: 18957,
+      education: 'Completion of two-year studies in college or high school graduate with relevant vocational/trade course',
+      training: 'None required',
+      experience: 'None required',
+      eligibility: 'Career Service Sub-Professional / First Level Eligibility',
+      competency: 'Clerical work, document filing, data encoding, basic computer operations',
+      placeOfAssignment: 'Treasury Office, Lapu-Lapu City Hall',
+      description: 'Performs clerical and administrative support functions in the City Treasury Office including document processing, record-keeping, and customer service at the collections window.',
+      status: 'OPEN',
+      openDate: new Date('2026-05-01'),
+      closeDate: new Date('2026-05-16'),
+      slots: 2,
+      lguId: lapulapu.id,
+      departmentId: llTreasuryDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch4.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos10.id, ...req } });
+  }
+
+  // Position 11: Tourism Promotion Officer I (Tourism, 1 slot, OPEN — Batch 4)
+  const llPos11 = await prisma.position.create({
+    data: {
+      title: 'Tourism Promotion Officer I',
+      itemNumber: 'LLC-TPO1-11-2026',
+      salaryGrade: 13,
+      monthlySalary: 37453,
+      education: "Bachelor's degree in Tourism, Marketing, Communications, or related field",
+      training: '4 hours of relevant training',
+      experience: '1 year of relevant experience',
+      eligibility: 'Career Service Professional / Second Level Eligibility',
+      competency: 'Destination marketing, event coordination, social media management, stakeholder relations, content creation',
+      placeOfAssignment: 'Tourism Office, Lapu-Lapu City Hall',
+      description: 'Promotes Lapu-Lapu City and Mactan Island as premier tourism destinations. Coordinates with resort operators, manages digital marketing campaigns, and organizes cultural and tourism events.',
+      status: 'OPEN',
+      openDate: new Date('2026-05-01'),
+      closeDate: new Date('2026-05-16'),
+      slots: 1,
+      lguId: lapulapu.id,
+      departmentId: llTourismDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch4.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos11.id, ...req } });
+  }
+
+  // Position 12: Driver I (Engineering, 1 slot, OPEN — Batch 4)
+  const llPos12 = await prisma.position.create({
+    data: {
+      title: 'Driver I',
+      itemNumber: 'LLC-DRV1-12-2026',
+      salaryGrade: 4,
+      monthlySalary: 17006,
+      education: 'Elementary school graduate',
+      training: 'None required',
+      experience: 'None required',
+      eligibility: 'MC 10, s. 2013 — Cat. IV (Driver)',
+      competency: 'Driving (light and heavy vehicles), vehicle maintenance, defensive driving, route planning',
+      placeOfAssignment: 'Engineering Office — Motor Pool, Lapu-Lapu City Hall',
+      description: 'Drives light and heavy motor vehicles for official trips, delivers supplies and equipment, performs basic vehicle maintenance checks, and maintains trip logs.',
+      status: 'OPEN',
+      openDate: new Date('2026-05-01'),
+      closeDate: new Date('2026-05-16'),
+      slots: 1,
+      lguId: lapulapu.id,
+      departmentId: llEngDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch4.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos12.id, ...req } });
+  }
+
+  // Position 13: Utility Worker I (Engineering, 2 slots, OPEN — Batch 4)
+  const llPos13 = await prisma.position.create({
+    data: {
+      title: 'Utility Worker I',
+      itemNumber: 'LLC-UW1-13-2026',
+      salaryGrade: 1,
+      monthlySalary: 13000,
+      education: 'Must be able to read and write',
+      training: 'None required',
+      experience: 'None required',
+      eligibility: 'None required (MC 10, s. 2013 — Cat. III)',
+      competency: 'General maintenance, janitorial services, grounds keeping, manual labor',
+      placeOfAssignment: 'Engineering Office — General Services, Lapu-Lapu City Hall',
+      description: 'Performs janitorial, maintenance, and general utility services for city government buildings and facilities. Includes grounds keeping, minor repairs, and errand services.',
+      status: 'OPEN',
+      openDate: new Date('2026-05-01'),
+      closeDate: new Date('2026-05-16'),
+      slots: 2,
+      lguId: lapulapu.id,
+      departmentId: llEngDept?.id,
+      createdBy: llHrAdmin.id,
+      cscBatchId: llBatch4.id,
+    },
+  });
+  for (const req of llDocReqs) {
+    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos13.id, ...req } });
+  }
+
+  console.log('Created 13 positions for Lapu-Lapu');
 
   // =============================================
   // LAPU-LAPU APPLICATIONS — Full Pipeline Demo
@@ -2991,7 +3243,12 @@ async function main() {
   // --- CSC Batch Audit Logs ---
   llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch1.id, null, { batchNumber: '2026-001', description: 'First quarter publication' }, new Date('2026-01-25T09:00:00'));
   llAddLog(llHrAdmin.id, 'UPDATE', 'csc_publication_batch', llBatch1.id, { isPublished: false }, { isPublished: true }, new Date('2026-02-01T08:00:00'));
-  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch2.id, null, { batchNumber: '2026-002', description: 'Second quarter publication' }, new Date('2026-03-15T09:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch2.id, null, { batchNumber: '2026-002', description: 'Second quarter publication' }, new Date('2026-03-10T09:00:00'));
+  llAddLog(llHrAdmin.id, 'UPDATE', 'csc_publication_batch', llBatch2.id, { isPublished: false }, { isPublished: true }, new Date('2026-03-15T08:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch3.id, null, { batchNumber: '2026-003', description: 'Third quarter publication' }, new Date('2026-03-25T09:00:00'));
+  llAddLog(llHrAdmin.id, 'UPDATE', 'csc_publication_batch', llBatch3.id, { isPublished: false }, { isPublished: true }, new Date('2026-04-01T08:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch4.id, null, { batchNumber: '2026-004', description: 'Fourth quarter publication' }, new Date('2026-04-20T09:00:00'));
+  llAddLog(llHrAdmin.id, 'UPDATE', 'csc_publication_batch', llBatch4.id, { isPublished: false }, { isPublished: true }, new Date('2026-05-01T08:00:00'));
 
   // --- Training Audit Logs ---
   llAddLog(llHrAdmin.id, 'CREATE', 'training', llTraining1.id, null, { title: 'Coastal Resource Management Training', type: 'TECHNICAL' }, new Date('2026-02-05T09:00:00'));

@@ -11,6 +11,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogOut, Menu, User, GitBranch } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 
 interface HeaderProps {
@@ -20,6 +21,7 @@ interface HeaderProps {
 export function Header({ onToggleSidebar }: HeaderProps) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const handleLogout = async () => {
     try {
@@ -27,6 +29,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     } catch (e) {
       // ignore
     }
+    queryClient.clear();
     logout();
     navigate('/');
   };
