@@ -47,16 +47,49 @@ The Civil Service Commission's Program to Institutionalize Meritocracy and Excel
 
 ## URL Structure
 
+The app is split into two business modules (RSP, L&D) plus an Administration section.
+Post-login, users land on the module launcher and pick where to go.
+
 | URL | Purpose | Access |
 |-----|---------|--------|
-| `/super-admin/*` | Super admin dashboard & LGU management | SUPER_ADMIN |
+| `/` | Super admin / generic login | Public |
 | `/:lgu-slug/login` | LGU-specific login page with branding (logo, name) | Public |
 | `/:lgu-slug/careers` | Public job listings for an LGU | Public |
 | `/:lgu-slug/careers/:id` | Position detail + apply | Public |
-| `/:lgu-slug/admin/*` | LGU admin dashboard (HR & Office) | LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
-| `/apply/register` | Applicant registration | Public |
-| `/apply/login` | Applicant login | Public |
-| `/apply/dashboard` | Applicant dashboard — track applications | APPLICANT |
+| `/register` | Applicant registration | Public |
+| `/modules` | Module launcher — pick RSP or L&D | All admin roles |
+| `/rsp/*` | Recruitment, Selection & Placement module | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
+| `/lnd/*` | Learning & Development module | SUPER_ADMIN, LGU_HR_ADMIN |
+| `/admin/*` | Administration — LGUs, Departments, Users, Audit Logs | SUPER_ADMIN, LGU_HR_ADMIN |
+| `/applicant/*` | Applicant dashboard, PDS, applications | APPLICANT |
+| `/apply/:slug/:positionId` | Application submission flow | APPLICANT |
+
+### Module Routes
+
+| Module | Base | Pages |
+|--------|------|-------|
+| RSP | `/rsp` | `dashboard`, `csc-batches`, `csc-batches/:id`, `positions`, `applications`, `applications/:id`, `interviews`, `interviews/:id`, `assessments/:positionId`, `selection`, `appointments`, `appointments/:id`, `reports`, `profile`, `process-flow` |
+| L&D | `/lnd` | `dashboard`, `training`, `training/:id`, `reports`, `profile` |
+| Administration | `/admin` | `dashboard` (super admin), `lgus`, `departments`, `users`, `audit-logs`, `profile` |
+
+### Module Access Rules
+
+- Module definitions live in `client/src/lib/modules.ts` — the single source of truth for
+  labels, base paths, allowed roles, and licensing.
+- The **active module is derived from the URL** (`moduleForPath`), never stored in state,
+  so the sidebar and route can never disagree.
+- `defaultDestination()` sends SUPER_ADMIN to `/admin`, a user with one available module
+  straight into it, and everyone else to `/modules`.
+- The launcher's "remember my choice" preference persists in the auth store, keyed to the
+  user id so a different user on the same browser still sees the launcher.
+- Legacy `/admin/*` paths for moved pages redirect to their new module path (bookmark safety).
+- Per-LGU licensing (`lgus.enabledModules`) gates the licensable modules (RSP, L&D). The client
+  enforces it via `canAccessModule` (launcher + route guards); the server enforces L&D via the
+  `requireModule('LND')` middleware on training/L&D-dashboard/L&D-report routes.
+- Per-user grants (`users.moduleAccess`) further gate access below LGU licensing. Effective access =
+  role ∩ LGU licensing ∩ per-user grant (deny-by-default; null grant = no modules). SUPER_ADMIN
+  bypasses both licensing and grant. HR admins set grants in User Management. Server enforces the
+  grant via the same `requireModule` middleware (L&D + Administration routes).
 
 ---
 
@@ -73,6 +106,7 @@ primehrm/
 │   │   │   └── ui/                # shadcn/ui components
 │   │   ├── features/
 │   │   │   ├── auth/              # Login pages, ProtectedRoute, auth hooks
+│   │   │   ├── modules/           # Module launcher (/modules)
 │   │   │   ├── dashboard/         # Role-based dashboards
 │   │   │   ├── lgu/               # LGU management (super admin)
 │   │   │   ├── departments/       # Department management
@@ -87,8 +121,8 @@ primehrm/
 │   │   │   ├── training/          # L&D module
 │   │   │   ├── users/             # User management
 │   │   │   └── reports/           # Reports & analytics
-│   │   ├── hooks/                 # Custom hooks
-│   │   ├── lib/                   # Utilities, error handling
+│   │   ├── hooks/                 # Custom hooks (useDebounce, useActiveModule)
+│   │   ├── lib/                   # Utilities, modules.ts registry, PDF/Excel generators
 │   │   ├── services/              # API client (axios), interceptors
 │   │   ├── stores/                # Zustand stores (auth)
 │   │   └── types/                 # Shared TypeScript types
@@ -133,6 +167,7 @@ primehrm/
 | address | VARCHAR NULL | |
 | contact_number | VARCHAR NULL | |
 | email | VARCHAR NULL | |
+| enabled_modules | JSON NULL | Licensed business modules, e.g. `["RSP","LND"]`. Null = all modules available |
 | is_active | BOOLEAN | Default true |
 | created_at | DATETIME | |
 | updated_at | DATETIME | |
@@ -147,6 +182,7 @@ primehrm/
 | first_name | VARCHAR | |
 | last_name | VARCHAR | |
 | role | ENUM | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN, APPLICANT |
+| module_access | JSON NULL | Per-user module grant, e.g. `["RSP","ADMIN"]`. Null = no modules (deny-by-default). SUPER_ADMIN/APPLICANT ignore it |
 | is_active | BOOLEAN | |
 | lgu_id | FK NULL | NULL for super admin & applicants |
 | department_id | FK NULL | For office admins |
@@ -471,13 +507,19 @@ primehrm/
 | POST | `/api/trainings/:id/report` | Submit report | Assigned employee |
 | GET | `/api/trainings/:id/monitoring` | Training monitoring | LGU Admins |
 
+### Dashboards (Phase 8, split per module in Phase 9D)
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| GET | `/api/dashboard/admin` | System overview (LGUs, users, depts, positions) | SUPER_ADMIN |
+| GET | `/api/dashboard/rsp` | Recruitment stats + recent positions/applicants | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
+| GET | `/api/dashboard/lnd` | Training stats + recent trainings | SUPER_ADMIN, LGU_HR_ADMIN |
+
 ### Reports (Phase 8)
 | Method | Endpoint | Description | Access |
 |--------|----------|-------------|--------|
-| GET | `/api/reports/dashboard` | Dashboard stats | LGU Admins |
-| GET | `/api/reports/positions` | Position reports | LGU_HR_ADMIN |
-| GET | `/api/reports/applications` | Application reports | LGU_HR_ADMIN |
-| GET | `/api/reports/trainings` | Training reports | LGU Admins |
+| GET | `/api/reports/positions` | Position reports (RSP Reports page) | SUPER_ADMIN, LGU_HR_ADMIN |
+| GET | `/api/reports/applications` | Application reports (RSP Reports page) | SUPER_ADMIN, LGU_HR_ADMIN |
+| GET | `/api/reports/trainings` | Training reports (L&D Reports page) | SUPER_ADMIN, LGU_HR_ADMIN |
 
 ### Audit Logs
 | Method | Endpoint | Description | Access |
@@ -624,10 +666,10 @@ primehrm/
 ### Phase 7 Expansion: L&D Module Overhaul (To Do)
 **Goal**: Separate L&D module with public training portal, interest registration, and certificate generation
 
-#### Module Switcher
-- [ ] Post-login module selection page: **RSP** or **L&D** — both share the same login
-- [ ] Module toggle/switcher in sidebar or header to switch between RSP and L&D without re-logging
-- [ ] Role-based module access (HR Admin sees both, Office Admin sees both, Applicant sees L&D public portal)
+#### Module Switcher — COMPLETED (see "Module Separation" phase)
+- [x] Post-login module selection page: **RSP** or **L&D** — both share the same login
+- [x] Module toggle/switcher in sidebar to switch between RSP and L&D without re-logging
+- [x] Role-based module access (HR Admin sees both, Office Admin sees RSP only, Applicant uses the applicant portal)
 
 #### Public Training Portal
 - [ ] Public training listings at `/:lgu-slug/trainings` (similar to careers page)
@@ -662,6 +704,56 @@ primehrm/
 - [x] Server-side pagination across all list endpoints
 - [x] Search debouncing (500ms)
 - [ ] Loading states & error boundaries
+
+### Phase 9: Module Separation (RSP / L&D / Administration)
+**Goal**: Split the single admin area into two business modules plus a system section
+
+#### Phase 9A — Module foundation — COMPLETED
+- [x] `client/src/lib/modules.ts` — module registry (key, label, basePath, roles, licensing)
+- [x] `client/src/hooks/useActiveModule.ts` — `useActiveModule`, `useEnabledModules`, `useModuleAccess`
+- [x] Auth store: persisted `moduleMemory` (launcher "remember my choice", keyed to user id)
+- [x] `ProtectedRoute` gains a `module` prop — checks role + LGU licensing
+
+#### Phase 9B — Route restructure — COMPLETED
+- [x] RSP pages moved to `/rsp/*`, training to `/lnd/*`, system pages stay on `/admin/*`
+- [x] All 54 hardcoded `/admin/*` references updated across 19 files
+- [x] Legacy redirects for 11 moved segments (bookmark safety)
+- [x] `postLoginDestination()` / `homeFor()` replace hardcoded `/admin/dashboard` redirects
+
+#### Phase 9C — Launcher & switcher — COMPLETED
+- [x] `/modules` launcher — LGU branding, RSP + L&D cards, locked state for unavailable modules
+- [x] "Remember my choice and skip this screen next time" toggle
+- [x] Sidebar module switcher dropdown + module-scoped nav filtering
+- [x] Administration gear icon in header (reachable from any business module)
+
+#### Phase 9D — Split dashboards & reports — COMPLETED
+- [x] Three dashboards: `/admin/dashboard` (system overview), `/rsp/dashboard`, `/lnd/dashboard`
+- [x] `GET /api/dashboard/stats` split into `/dashboard/admin`, `/dashboard/rsp`, `/dashboard/lnd`
+- [x] System overview relocated from RSP to Administration (it was orphaned after the split)
+- [x] L&D dashboard: trainings by status, participants enrolled vs trained, attendance rate, recent trainings
+- [x] Reports split: `/rsp/reports` (Positions + Applications) and `/lnd/reports` (Training)
+- [x] `/lnd` index → `dashboard`; `/admin` index → `dashboard` for super admin
+- [x] Cross-module "upcoming trainings" banner removed from the RSP dashboard
+
+#### Phase 9E — Per-LGU module licensing — COMPLETED
+- [x] `enabledModules Json?` on `lgus` table (null = all modules on)
+- [x] `server/src/config/modules.ts` — `LICENSABLE_MODULES`, `parseEnabledModules`, `lguHasModule`
+- [x] `enabledModules` included in auth `login` / `getMe` responses
+- [x] `createLgu` / `updateLgu` accept + validate `enabledModules` (bad key → 400)
+- [x] `requireModule(key)` middleware; applied to training routes, `/dashboard/lnd`, `/reports/trainings`
+- [x] SUPER_ADMIN toggles RSP / L&D per LGU in LGU Management dialog (+ Modules table column)
+- [x] Seed: Mandaue = RSP only, others = both (demo of a disabled module)
+- [x] RSP left client-enforced (core module); middleware ready for RSP if ever needed
+
+#### Phase 9F — Per-user module access — COMPLETED
+- [x] `users.moduleAccess Json?` (null = no modules; deny-by-default)
+- [x] Effective access = role ∩ LGU licensing ∩ per-user grant; SUPER_ADMIN bypasses licensing + grant
+- [x] All three modules grantable (incl. Administration), clamped to the user's role
+- [x] `ROLE_MODULES` server map, `parseModuleAccess`, `userHasModule`; `requireModule` checks license + grant
+- [x] `requireModule('ADMIN')` guards `/users` + `/audit-logs`; L&D guarded as in 9E
+- [x] Self-lockout guard: can't remove your own Administration grant (server 400 + client toggle disabled)
+- [x] HR/super admin manage grants via module toggles in the User Management dialog (+ Modules column)
+- [x] Seed backfills every LGU staff user with an explicit grant
 
 ---
 

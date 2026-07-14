@@ -1,0 +1,59 @@
+import { useQuery } from '@tanstack/react-query';
+import api from '@/services/api';
+import { Building2, Users, FolderTree, Shield } from 'lucide-react';
+import { StatCard, DashboardLoader } from './components';
+
+interface AdminStats {
+  totalLgus: number;
+  totalUsers: number;
+  totalDepartments: number;
+  totalPositions: number;
+}
+
+export function AdminDashboardPage() {
+  const { data, isLoading } = useQuery<AdminStats>({
+    queryKey: ['dashboard-admin'],
+    queryFn: async () => {
+      const { data } = await api.get('/dashboard/admin');
+      return data.data.stats;
+    },
+  });
+
+  if (isLoading) return <DashboardLoader />;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">Administration</h1>
+        <p className="text-sm text-muted-foreground">System Overview</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total LGUs"
+          value={data?.totalLgus ?? 0}
+          subtitle="Registered LGUs"
+          icon={<Building2 className="h-4 w-4 text-muted-foreground" />}
+        />
+        <StatCard
+          title="Total Users"
+          value={data?.totalUsers ?? 0}
+          subtitle="Active users"
+          icon={<Users className="h-4 w-4 text-muted-foreground" />}
+        />
+        <StatCard
+          title="Departments"
+          value={data?.totalDepartments ?? 0}
+          subtitle="Active departments"
+          icon={<FolderTree className="h-4 w-4 text-muted-foreground" />}
+        />
+        <StatCard
+          title="Positions"
+          value={data?.totalPositions ?? 0}
+          subtitle="All positions"
+          icon={<Shield className="h-4 w-4 text-muted-foreground" />}
+        />
+      </div>
+    </div>
+  );
+}

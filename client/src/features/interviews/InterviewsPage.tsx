@@ -212,7 +212,7 @@ export function InterviewsPage() {
                 <TableRow
                   key={interview.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/admin/interviews/${interview.id}`)}
+                  onClick={() => navigate(`/rsp/interviews/${interview.id}`)}
                 >
                   <TableCell className="font-medium">
                     {interview.position?.title || '-'}

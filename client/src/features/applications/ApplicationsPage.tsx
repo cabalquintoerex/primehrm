@@ -181,7 +181,7 @@ export function ApplicationsPage() {
                 <TableRow
                   key={app.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/admin/applications/${app.id}`)}
+                  onClick={() => navigate(`/rsp/applications/${app.id}`)}
                 >
                   <TableCell className="font-medium">
                     {app.applicant ? `${app.applicant.firstName} ${app.applicant.lastName}` : '-'}
@@ -200,7 +200,7 @@ export function ApplicationsPage() {
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/admin/applications/${app.id}`);
+                        navigate(`/rsp/applications/${app.id}`);
                       }}
                     >
                       <Eye className="h-4 w-4" />

@@ -15,7 +15,7 @@ const steps = [
     title: 'Create CSC Publication Batch',
     actor: 'LGU HR Admin',
     module: 'CSC Batches',
-    path: '/admin/csc-batches',
+    path: '/rsp/csc-batches',
     icon: FileStack,
     items: [
       'HR Admin clicks "New Batch"',
@@ -29,7 +29,7 @@ const steps = [
     title: 'Create Positions and Assign to Batch',
     actor: 'LGU HR Admin',
     module: 'Positions',
-    path: '/admin/positions',
+    path: '/rsp/positions',
     icon: Briefcase,
     items: [
       'HR Admin clicks "Add Position"',
@@ -46,7 +46,7 @@ const steps = [
     title: 'Publish the CSC Batch',
     actor: 'LGU HR Admin',
     module: 'CSC Batch Detail Page',
-    path: '/admin/csc-batches/:id',
+    path: '/rsp/csc-batches/:id',
     icon: Globe,
     items: [
       'After CSC publishes the positions on their official website, HR Admin clicks "Mark as Published"',
@@ -76,7 +76,7 @@ const steps = [
     title: 'HR Reviews and Endorses to Office/Department',
     actor: 'LGU HR Admin',
     module: 'Applications',
-    path: '/admin/applications',
+    path: '/rsp/applications',
     icon: FileSearch,
     items: [
       'HR Admin views submitted applications with filters (by position, status, search by name)',
@@ -91,7 +91,7 @@ const steps = [
     title: 'Office Admin Screens and Shortlists',
     actor: 'LGU Office Admin',
     module: 'Applications',
-    path: '/admin/applications',
+    path: '/rsp/applications',
     icon: Filter,
     items: [
       'Office Admin sees only endorsed applications for their department',
@@ -105,7 +105,7 @@ const steps = [
     title: 'HR Schedules Interviews',
     actor: 'LGU HR Admin',
     module: 'Interviews',
-    path: '/admin/interviews',
+    path: '/rsp/interviews',
     icon: CalendarDays,
     items: [
       'HR Admin creates an interview schedule: selects the Position, sets Date, Venue, and Notes',
@@ -118,7 +118,7 @@ const steps = [
     title: 'Conduct Interview and Mark Attendance',
     actor: 'LGU HR Admin',
     module: 'Interview Detail',
-    path: '/admin/interviews/:id',
+    path: '/rsp/interviews/:id',
     icon: ClipboardCheck,
     items: [
       'On the interview date, HR Admin opens the interview detail page',
@@ -132,7 +132,7 @@ const steps = [
     title: 'Encode Assessment Scores',
     actor: 'LGU HR Admin',
     module: 'Assessment',
-    path: '/admin/assessments/:positionId',
+    path: '/rsp/assessments/:positionId',
     icon: BarChart3,
     items: [
       'HR Admin opens the assessment scoring page',
@@ -146,7 +146,7 @@ const steps = [
     title: 'Select for Appointment',
     actor: 'LGU HR Admin',
     module: 'Selection',
-    path: '/admin/selection',
+    path: '/rsp/selection',
     icon: Award,
     items: [
       'HR Admin views all qualified applicants grouped by position',
@@ -160,7 +160,7 @@ const steps = [
     title: 'Create Appointment',
     actor: 'LGU HR Admin',
     module: 'Appointments',
-    path: '/admin/appointments',
+    path: '/rsp/appointments',
     icon: FileCheck,
     items: [
       'HR Admin clicks "Appoint" for selected applicants',
@@ -175,7 +175,7 @@ const steps = [
     title: 'Generate Appointment Documents',
     actor: 'LGU HR Admin',
     module: 'Appointment Detail',
-    path: '/admin/appointments/:id',
+    path: '/rsp/appointments/:id',
     icon: Printer,
     items: [
       'Generate and print Appointment Form (CS Form 33-B) \u2014 LGU header, appointee details, position info, salary, signatures',
@@ -188,7 +188,7 @@ const steps = [
     title: 'Final Requirements Verification',
     actor: 'LGU HR Admin',
     module: 'Appointment Detail',
-    path: '/admin/appointments/:id',
+    path: '/rsp/appointments/:id',
     icon: ShieldCheck,
     items: [
       'HR Admin manages final requirements: can add custom requirements, delete unverified ones',

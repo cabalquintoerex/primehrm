@@ -12,6 +12,7 @@ import { Loader2, Shield, ArrowLeft, FileText, CheckCircle2, User } from 'lucide
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { Position, Lgu, PositionDocumentRequirement, Application } from '@/types';
+import { homeFor } from '@/lib/modules';
 
 function formatPeso(amount: number | string | null): string {
   if (amount === null || amount === undefined) return '-';
@@ -123,7 +124,7 @@ export function PositionDetailPage() {
             </div>
             {isAuthenticated && user ? (
               <Link
-                to={user.role === 'APPLICANT' ? '/applicant/dashboard' : '/admin/dashboard'}
+                to={homeFor(user)}
                 className="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors flex items-center gap-1.5"
               >
                 <User className="h-4 w-4" />

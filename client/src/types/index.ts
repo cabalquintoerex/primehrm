@@ -1,3 +1,6 @@
+/** Business + system modules. Defined here so `lib/modules.ts` can import UserRole without a cycle. */
+export type ModuleKey = 'RSP' | 'LND' | 'ADMIN';
+
 export interface Lgu {
   id: number;
   name: string;
@@ -7,6 +10,8 @@ export interface Lgu {
   address: string | null;
   contactNumber: string | null;
   email: string | null;
+  /** Modules this LGU has licensed. Null/absent means all modules are available. */
+  enabledModules?: ModuleKey[] | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -28,7 +33,9 @@ export interface User {
   lguId: number | null;
   departmentId: number | null;
   createdAt: string;
-  lgu?: Pick<Lgu, 'id' | 'name' | 'slug' | 'logo'> | null;
+  /** Per-user module grant. Null = no modules (deny-by-default). SUPER_ADMIN/APPLICANT ignore it. */
+  moduleAccess?: ModuleKey[] | null;
+  lgu?: Pick<Lgu, 'id' | 'name' | 'slug' | 'logo' | 'enabledModules'> | null;
   department?: Pick<Department, 'id' | 'name'> | null;
 }
 

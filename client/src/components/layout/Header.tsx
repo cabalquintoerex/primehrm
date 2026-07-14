@@ -9,10 +9,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LogOut, Menu, User, GitBranch } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { LogOut, Menu, User, GitBranch, Settings } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useActiveModule, useModuleAccess } from '@/hooks/useActiveModule';
+import { MODULES } from '@/lib/modules';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -22,6 +25,15 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const activeModule = useActiveModule();
+  const { canAccess } = useModuleAccess();
+
+  // Profile lives inside whichever module you are in, so the sidebar keeps its context.
+  const basePath = activeModule?.basePath ?? '/applicant';
+  // The process flow documents the RSP pipeline, so it is only offered there.
+  const showProcessFlow = activeModule?.key === 'RSP' || user?.role === 'APPLICANT';
+  // Administration is reachable from any business module, but not from itself.
+  const showAdminGear = canAccess('ADMIN') && activeModule?.key !== 'ADMIN';
 
   const handleLogout = async () => {
     try {
@@ -48,6 +60,21 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         </p>
       </div>
 
+      {showAdminGear && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <Link to={MODULES.ADMIN.basePath} aria-label="Administration">
+                  <Settings className="h-4 w-4" />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Administration</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -66,20 +93,19 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => navigate(user?.role === 'APPLICANT' ? '/applicant/profile' : '/admin/profile')}
-            className="cursor-pointer"
-          >
+          <DropdownMenuItem onClick={() => navigate(`${basePath}/profile`)} className="cursor-pointer">
             <User className="mr-2 h-4 w-4" />
             Profile
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => navigate(user?.role === 'APPLICANT' ? '/applicant/process-flow' : '/admin/process-flow')}
-            className="cursor-pointer"
-          >
-            <GitBranch className="mr-2 h-4 w-4" />
-            Process Flow
-          </DropdownMenuItem>
+          {showProcessFlow && (
+            <DropdownMenuItem
+              onClick={() => navigate(`${basePath}/process-flow`)}
+              className="cursor-pointer"
+            >
+              <GitBranch className="mr-2 h-4 w-4" />
+              Process Flow
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
             <LogOut className="mr-2 h-4 w-4" />

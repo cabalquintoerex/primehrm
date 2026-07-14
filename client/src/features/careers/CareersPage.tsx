@@ -10,6 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, Shield, MapPin, Hash, Calendar, User, CheckCircle2, Briefcase } from 'lucide-react';
 import type { Position, Lgu, PaginatedResponse, Application } from '@/types';
+import { homeFor } from '@/lib/modules';
 
 function formatPeso(amount: number | string | null): string {
   if (amount === null || amount === undefined) return '-';
@@ -81,7 +82,7 @@ export function CareersPage() {
             </div>
             {isAuthenticated && user ? (
               <Link
-                to={user.role === 'APPLICANT' ? '/applicant/dashboard' : '/admin/dashboard'}
+                to={homeFor(user)}
                 className="text-xs font-medium text-slate-200 hover:text-white transition-colors flex items-center gap-1.5"
               >
                 <User className="h-3.5 w-3.5" />

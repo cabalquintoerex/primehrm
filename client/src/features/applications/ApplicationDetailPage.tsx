@@ -176,7 +176,7 @@ export function ApplicationDetailPage() {
   if (!application) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" onClick={() => navigate('/admin/applications')}>
+        <Button variant="ghost" onClick={() => navigate('/rsp/applications')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Applications
         </Button>
         <p className="text-muted-foreground">Application not found.</p>
@@ -194,7 +194,7 @@ export function ApplicationDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/applications')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/rsp/applications')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">

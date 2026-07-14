@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { postLoginDestination } from '@/lib/modules';
 
 const registerSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -28,7 +29,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setAuth } = useAuthStore();
+  const { setAuth, moduleMemory } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const redirectUrl = searchParams.get('redirect');
 
@@ -47,13 +48,7 @@ export function RegisterPage() {
       const { data } = await api.post('/auth/register', payload);
       setAuth(data.user, data.token);
       toast.success('Registration successful');
-      if (redirectUrl) {
-        navigate(redirectUrl);
-      } else if (data.user.role === 'APPLICANT') {
-        navigate('/applicant/dashboard');
-      } else {
-        navigate('/admin/dashboard');
-      }
+      navigate(redirectUrl || postLoginDestination(data.user, moduleMemory));
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Registration failed');
     } finally {

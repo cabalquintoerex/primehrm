@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Shield, Loader2, Users, BookOpen, MapPin, Phone, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
+import { postLoginDestination } from '@/lib/modules';
 import type { Lgu } from '@/types';
 
 const loginSchema = z.object({
@@ -43,7 +44,7 @@ export function LoginPage() {
   const { slug } = useParams<{ slug?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { setAuth, moduleMemory } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const redirectUrl = searchParams.get('redirect');
 
@@ -72,13 +73,7 @@ export function LoginPage() {
       const { data } = await api.post('/auth/login', formData);
       setAuth(data.user, data.token);
       toast.success('Login successful');
-      if (redirectUrl) {
-        navigate(redirectUrl);
-      } else if (data.user.role === 'APPLICANT') {
-        navigate('/applicant/dashboard');
-      } else {
-        navigate('/admin/dashboard');
-      }
+      navigate(redirectUrl || postLoginDestination(data.user, moduleMemory));
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Login failed');
     } finally {

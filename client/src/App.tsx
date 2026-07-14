@@ -1,14 +1,18 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
 import { LoginPage } from '@/features/auth/LoginPage';
+import { useAuthStore } from '@/stores/authStore';
 
 // Lazy-loaded pages
-const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const ModuleLauncherPage = lazy(() => import('@/features/modules/ModuleLauncherPage').then(m => ({ default: m.ModuleLauncherPage })));
+const AdminDashboardPage = lazy(() => import('@/features/dashboard/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })));
+const RspDashboardPage = lazy(() => import('@/features/dashboard/RspDashboardPage').then(m => ({ default: m.RspDashboardPage })));
+const LndDashboardPage = lazy(() => import('@/features/dashboard/LndDashboardPage').then(m => ({ default: m.LndDashboardPage })));
 const LguPage = lazy(() => import('@/features/lgu/LguPage').then(m => ({ default: m.LguPage })));
 const DepartmentPage = lazy(() => import('@/features/departments/DepartmentPage').then(m => ({ default: m.DepartmentPage })));
 const UserPage = lazy(() => import('@/features/users/UserPage').then(m => ({ default: m.UserPage })));
@@ -34,7 +38,8 @@ const CscBatchPage = lazy(() => import('@/features/csc-batches/CscBatchPage').th
 const CscBatchDetailPage = lazy(() => import('@/features/csc-batches/CscBatchDetailPage').then(m => ({ default: m.CscBatchDetailPage })));
 const ProfilePage = lazy(() => import('@/features/profile/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const ProcessFlowPage = lazy(() => import('@/features/process-flow/ProcessFlowPage').then(m => ({ default: m.ProcessFlowPage })));
-const ReportsPage = lazy(() => import('@/features/reports/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const RspReportsPage = lazy(() => import('@/features/reports/RspReportsPage').then(m => ({ default: m.RspReportsPage })));
+const LndReportsPage = lazy(() => import('@/features/reports/LndReportsPage').then(m => ({ default: m.LndReportsPage })));
 const AuditLogPage = lazy(() => import('@/features/audit-logs/AuditLogPage').then(m => ({ default: m.AuditLogPage })));
 
 const queryClient = new QueryClient({
@@ -60,6 +65,27 @@ function SlugRedirect() {
   return <Navigate to={`/${slug}/login`} replace />;
 }
 
+/**
+ * Preserves bookmarks from before the module split: `/admin/positions/3` → `/rsp/positions/3`.
+ * Mounted per moved segment so the surviving `/admin/*` pages are untouched.
+ */
+function LegacyRedirect({ to }: { to: string }) {
+  const location = useLocation();
+  // Everything after `/admin/<segment>` — e.g. "3" in `/admin/positions/3`.
+  const rest = location.pathname.split('/').slice(3).join('/');
+  const target = rest ? `${to}/${rest}` : to;
+  return <Navigate to={`${target}${location.search}`} replace />;
+}
+
+/** Super admins get the system-overview dashboard; HR admins land on Departments. */
+function AdminIndexRedirect() {
+  const { user } = useAuthStore();
+  return <Navigate to={user?.role === 'SUPER_ADMIN' ? 'dashboard' : 'departments'} replace />;
+}
+
+const RSP_ADMINS = ['SUPER_ADMIN', 'LGU_HR_ADMIN'];
+const RSP_ALL = ['SUPER_ADMIN', 'LGU_HR_ADMIN', 'LGU_OFFICE_ADMIN'];
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -73,6 +99,16 @@ function App() {
             <Route path="/:slug/careers" element={<CareersPage />} />
             <Route path="/:slug/careers/:id" element={<PositionDetailPage />} />
             <Route path="/register" element={<RegisterPage />} />
+
+            {/* Module launcher */}
+            <Route
+              path="/modules"
+              element={
+                <ProtectedRoute allowedRoles={RSP_ALL}>
+                  <ModuleLauncherPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Protected applicant routes */}
             <Route
@@ -101,164 +137,140 @@ function App() {
               }
             />
 
-            {/* Protected admin routes */}
+            {/* ---- Module: Recruitment, Selection & Placement ---- */}
             <Route
-              path="/admin"
+              path="/rsp"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute module="RSP">
                   <MainLayout />
                 </ProtectedRoute>
               }
             >
               <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="dashboard" element={<RspDashboardPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="process-flow" element={<ProcessFlowPage />} />
               <Route
-                path="lgus"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                    <LguPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="departments"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <DepartmentPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="positions"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <PositionPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="csc-batches"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <CscBatchPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><CscBatchPage /></ProtectedRoute>}
               />
               <Route
                 path="csc-batches/:id"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <CscBatchDetailPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><CscBatchDetailPage /></ProtectedRoute>}
               />
               <Route
-                path="users"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <UserPage />
-                  </ProtectedRoute>
-                }
+                path="positions"
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><PositionPage /></ProtectedRoute>}
               />
               <Route
                 path="applications"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN', 'LGU_OFFICE_ADMIN']}>
-                    <ApplicationsPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ALL}><ApplicationsPage /></ProtectedRoute>}
               />
               <Route
                 path="applications/:id"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN', 'LGU_OFFICE_ADMIN']}>
-                    <ApplicationDetailPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ALL}><ApplicationDetailPage /></ProtectedRoute>}
               />
               <Route
                 path="interviews"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <InterviewsPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><InterviewsPage /></ProtectedRoute>}
               />
               <Route
                 path="interviews/:id"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <InterviewDetailPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><InterviewDetailPage /></ProtectedRoute>}
               />
               <Route
                 path="assessments/:positionId"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <AssessmentPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><AssessmentPage /></ProtectedRoute>}
               />
               <Route
                 path="selection"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <SelectionPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><SelectionPage /></ProtectedRoute>}
               />
               <Route
                 path="appointments"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <AppointmentsPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><AppointmentsPage /></ProtectedRoute>}
               />
               <Route
                 path="appointments/:id"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <AppointmentDetailPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="training"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <TrainingPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="training/:id"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <TrainingDetailPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><AppointmentDetailPage /></ProtectedRoute>}
               />
               <Route
                 path="reports"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <ReportsPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><RspReportsPage /></ProtectedRoute>}
+              />
+            </Route>
+
+            {/* ---- Module: Learning & Development ---- */}
+            <Route
+              path="/lnd"
+              element={
+                <ProtectedRoute module="LND">
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<LndDashboardPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route
+                path="training"
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><TrainingPage /></ProtectedRoute>}
+              />
+              <Route
+                path="training/:id"
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><TrainingDetailPage /></ProtectedRoute>}
+              />
+              <Route
+                path="reports"
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><LndReportsPage /></ProtectedRoute>}
+              />
+            </Route>
+
+            {/* ---- Module: Administration ---- */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute module="ADMIN">
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminIndexRedirect />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route
+                path="dashboard"
+                element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminDashboardPage /></ProtectedRoute>}
+              />
+              <Route
+                path="lgus"
+                element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><LguPage /></ProtectedRoute>}
+              />
+              <Route
+                path="departments"
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><DepartmentPage /></ProtectedRoute>}
+              />
+              <Route
+                path="users"
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><UserPage /></ProtectedRoute>}
               />
               <Route
                 path="audit-logs"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'LGU_HR_ADMIN']}>
-                    <AuditLogPage />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><AuditLogPage /></ProtectedRoute>}
               />
             </Route>
+
+            {/* Legacy paths from before the RSP / L&D module split */}
+            <Route path="/admin/dashboard/*" element={<LegacyRedirect to="/rsp/dashboard" />} />
+            <Route path="/admin/csc-batches/*" element={<LegacyRedirect to="/rsp/csc-batches" />} />
+            <Route path="/admin/positions/*" element={<LegacyRedirect to="/rsp/positions" />} />
+            <Route path="/admin/applications/*" element={<LegacyRedirect to="/rsp/applications" />} />
+            <Route path="/admin/interviews/*" element={<LegacyRedirect to="/rsp/interviews" />} />
+            <Route path="/admin/assessments/*" element={<LegacyRedirect to="/rsp/assessments" />} />
+            <Route path="/admin/selection/*" element={<LegacyRedirect to="/rsp/selection" />} />
+            <Route path="/admin/appointments/*" element={<LegacyRedirect to="/rsp/appointments" />} />
+            <Route path="/admin/reports/*" element={<LegacyRedirect to="/rsp/reports" />} />
+            <Route path="/admin/process-flow/*" element={<LegacyRedirect to="/rsp/process-flow" />} />
+            <Route path="/admin/training/*" element={<LegacyRedirect to="/lnd/training" />} />
 
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/" replace />} />

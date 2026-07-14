@@ -184,7 +184,7 @@ export function AppointmentsPage() {
                         <Badge className={badge.className}>{badge.label}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/appointments/${appt.id}`)}>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/rsp/appointments/${appt.id}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       </TableCell>

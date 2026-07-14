@@ -33,7 +33,7 @@ export const login = async (req: Request, res: Response) => {
         isActive: true,
       },
       include: {
-        lgu: { select: { id: true, name: true, slug: true, logo: true } },
+        lgu: { select: { id: true, name: true, slug: true, logo: true, enabledModules: true } },
       },
     });
 
@@ -77,6 +77,7 @@ export const login = async (req: Request, res: Response) => {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        moduleAccess: user.moduleAccess ?? null,
         lgu: user.lgu,
       },
       token,
@@ -274,7 +275,8 @@ export const getMe = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
-        lgu: { select: { id: true, name: true, slug: true, logo: true } },
+        moduleAccess: true,
+        lgu: { select: { id: true, name: true, slug: true, logo: true, enabledModules: true } },
         department: { select: { id: true, name: true } },
       },
     });

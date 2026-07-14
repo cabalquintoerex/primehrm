@@ -55,6 +55,7 @@ async function main() {
       address: 'Cebu City Hall, Osmena Blvd, Cebu City',
       contactNumber: '(032) 255-3611',
       email: 'hr@cebucity.gov.ph',
+      enabledModules: ['RSP', 'LND'],
     },
   });
   console.log('Created LGU:', lgu.name);
@@ -82,6 +83,7 @@ async function main() {
       firstName: 'HR',
       lastName: 'Admin',
       role: 'LGU_HR_ADMIN',
+      moduleAccess: ['RSP', 'LND', 'ADMIN'],
       lguId: lgu.id,
     },
   });
@@ -100,6 +102,7 @@ async function main() {
       firstName: 'Engineering',
       lastName: 'Admin',
       role: 'LGU_OFFICE_ADMIN',
+      moduleAccess: ['RSP'],
       lguId: lgu.id,
       departmentId: hrDept?.id,
     },
@@ -116,6 +119,7 @@ async function main() {
       address: 'Mandaue City Hall, A.C. Cortes Ave, Mandaue City',
       contactNumber: '(032) 346-2214',
       email: 'hr@mandauecity.gov.ph',
+      enabledModules: ['RSP'],
     },
   });
   console.log('Created LGU:', mandaue.name);
@@ -140,6 +144,7 @@ async function main() {
       firstName: 'HR',
       lastName: 'Admin',
       role: 'LGU_HR_ADMIN',
+      moduleAccess: ['RSP', 'ADMIN'],
       lguId: mandaue.id,
     },
   });
@@ -155,6 +160,7 @@ async function main() {
       address: 'Lapu-Lapu City Hall, M.L. Quezon National Highway, Lapu-Lapu City',
       contactNumber: '(032) 340-5456',
       email: 'hr@lapulapucity.gov.ph',
+      enabledModules: ['RSP', 'LND'],
     },
   });
   console.log('Created LGU:', lapulapu.name);
@@ -179,6 +185,7 @@ async function main() {
       firstName: 'HR',
       lastName: 'Admin',
       role: 'LGU_HR_ADMIN',
+      moduleAccess: ['RSP', 'LND', 'ADMIN'],
       lguId: lapulapu.id,
     },
   });
@@ -197,6 +204,7 @@ async function main() {
       firstName: 'Engineering',
       lastName: 'Admin',
       role: 'LGU_OFFICE_ADMIN',
+      moduleAccess: ['RSP'],
       lguId: lapulapu.id,
       departmentId: lapulapuEngDept?.id,
     },
@@ -213,6 +221,7 @@ async function main() {
       address: 'Cebu Provincial Capitol, Escario St, Cebu City',
       contactNumber: '(032) 253-6333',
       email: 'hr@cebu.gov.ph',
+      enabledModules: ['RSP', 'LND'],
     },
   });
   console.log('Created LGU:', cebuProvince.name);
@@ -237,6 +246,7 @@ async function main() {
       firstName: 'HR',
       lastName: 'Admin',
       role: 'LGU_HR_ADMIN',
+      moduleAccess: ['RSP', 'LND', 'ADMIN'],
       lguId: cebuProvince.id,
     },
   });
@@ -1579,6 +1589,7 @@ async function main() {
       firstName: 'Health',
       lastName: 'Admin',
       role: 'LGU_OFFICE_ADMIN',
+      moduleAccess: ['RSP'],
       lguId: lgu.id,
       departmentId: healthDept?.id,
     },
@@ -1593,6 +1604,7 @@ async function main() {
       firstName: 'Treasury',
       lastName: 'Admin',
       role: 'LGU_OFFICE_ADMIN',
+      moduleAccess: ['RSP'],
       lguId: lgu.id,
       departmentId: treasuryDept?.id,
     },
@@ -2300,6 +2312,7 @@ async function main() {
       firstName: 'Tourism',
       lastName: 'Admin',
       role: 'LGU_OFFICE_ADMIN',
+      moduleAccess: ['RSP'],
       lguId: lapulapu.id,
       departmentId: llTourismDept?.id,
     },

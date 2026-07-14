@@ -12,12 +12,16 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Plus, Pencil, Trash2, Search, Loader2, Upload, X, Shield, ImageIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import type { Lgu, PaginatedResponse } from '@/types';
+import type { Lgu, PaginatedResponse, ModuleKey } from '@/types';
+import { MODULES } from '@/lib/modules';
+
+const LICENSABLE: ModuleKey[] = ['RSP', 'LND'];
 
 const lguSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -43,6 +47,7 @@ export function LguPage() {
   const [headerBgFile, setHeaderBgFile] = useState<File | null>(null);
   const [headerBgPreview, setHeaderBgPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [enabledModules, setEnabledModules] = useState<ModuleKey[]>(['RSP', 'LND']);
 
   const { data, isLoading } = useQuery<PaginatedResponse<Lgu>>({
     queryKey: ['lgus', debouncedSearch, page],
@@ -58,11 +63,12 @@ export function LguPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (formData: LguFormData) => {
+      const payload = { ...formData, enabledModules };
       let res;
       if (editingLgu) {
-        res = await api.put(`/lgus/${editingLgu.id}`, formData);
+        res = await api.put(`/lgus/${editingLgu.id}`, payload);
       } else {
-        res = await api.post('/lgus', formData);
+        res = await api.post('/lgus', payload);
       }
       const lguId = editingLgu?.id || res.data.data.id;
       // Upload logo if a new file was selected
@@ -104,6 +110,7 @@ export function LguPage() {
     setLogoPreview(null);
     setHeaderBgFile(null);
     setHeaderBgPreview(null);
+    setEnabledModules(['RSP', 'LND']);
     reset({ name: '', slug: '', address: '', contactNumber: '', email: '' });
     setDialogOpen(true);
   };
@@ -114,6 +121,8 @@ export function LguPage() {
     setLogoPreview(lgu.logo || null);
     setHeaderBgFile(null);
     setHeaderBgPreview(lgu.headerBg || null);
+    // Null/absent licensing means all modules are on.
+    setEnabledModules(lgu.enabledModules ?? ['RSP', 'LND']);
     reset({
       name: lgu.name,
       slug: lgu.slug,
@@ -221,7 +230,7 @@ export function LguPage() {
               <TableHead className="w-[60px]">Logo</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Slug</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Modules</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -253,7 +262,18 @@ export function LguPage() {
                   </TableCell>
                   <TableCell className="font-medium">{lgu.name}</TableCell>
                   <TableCell className="text-muted-foreground">{lgu.slug}</TableCell>
-                  <TableCell>{lgu.email || '-'}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {(lgu.enabledModules ?? LICENSABLE).map((key) => (
+                        <Badge key={key} variant="outline" className="text-[10px]">
+                          {MODULES[key as ModuleKey]?.label ?? key}
+                        </Badge>
+                      ))}
+                      {(lgu.enabledModules ?? LICENSABLE).length === 0 && (
+                        <span className="text-xs text-muted-foreground">None</span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={lgu.isActive ? 'default' : 'secondary'}>
                       {lgu.isActive ? 'Active' : 'Inactive'}
@@ -394,6 +414,45 @@ export function LguPage() {
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" {...register('email')} />
                 {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+              </div>
+
+              {/* Module licensing */}
+              <div className="space-y-2">
+                <Label>Enabled Modules</Label>
+                <p className="text-xs text-muted-foreground">
+                  Controls which modules this LGU's staff can access. Administration is always available.
+                </p>
+                <div className="space-y-2 rounded-md border p-3">
+                  {LICENSABLE.map((key) => {
+                    const mod = MODULES[key];
+                    const Icon = mod.icon;
+                    const on = enabledModules.includes(key);
+                    return (
+                      <div key={key} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">{mod.label}</p>
+                            <p className="text-xs text-muted-foreground">{mod.name}</p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={on}
+                          onCheckedChange={(checked) =>
+                            setEnabledModules((prev) =>
+                              checked ? [...new Set([...prev, key])] : prev.filter((m) => m !== key)
+                            )
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                {enabledModules.length === 0 && (
+                  <p className="text-xs text-amber-600">
+                    With no modules enabled, this LGU's staff will only have Administration access.
+                  </p>
+                )}
               </div>
             </div>
             <DialogFooter>

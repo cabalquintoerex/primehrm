@@ -17,6 +17,8 @@ model Lgu {
   contactNumber String?  @map("contact_number")
   email     String?
   isActive  Boolean  @default(true) @map("is_active")
+  // Licensed business modules, e.g. ["RSP", "LND"]. Null = all modules available.
+  enabledModules Json? @map("enabled_modules")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -45,6 +47,9 @@ model User {
   lastName  String   @map("last_name")
   role      UserRole @default(APPLICANT)
   isActive  Boolean  @default(true) @map("is_active")
+  // Per-user module grants, e.g. ["RSP","ADMIN"]. Null = no modules (deny-by-default).
+  // Only governs LGU staff; SUPER_ADMIN and APPLICANT ignore it.
+  moduleAccess Json? @map("module_access")
   lguId     Int?     @map("lgu_id")
   departmentId Int?  @map("department_id")
   createdAt DateTime @default(now()) @map("created_at")

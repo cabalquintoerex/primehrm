@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/database';
+import { lguHasModule, userHasModule, type ModuleKey } from '../config/modules';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -10,6 +11,10 @@ export interface AuthRequest extends Request {
     role: string;
     lguId: number | null;
     departmentId: number | null;
+    /** Licensed modules of the user's LGU. Null = unrestricted (super admins, applicants). */
+    enabledModules: unknown;
+    /** Per-user module grant. Null = no modules (deny-by-default) for LGU staff. */
+    moduleAccess: unknown;
   };
 }
 
@@ -25,7 +30,17 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, username: true, role: true, lguId: true, departmentId: true, isActive: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        lguId: true,
+        departmentId: true,
+        isActive: true,
+        moduleAccess: true,
+        lgu: { select: { enabledModules: true } },
+      },
     });
 
     if (!user || !user.isActive) {
@@ -39,6 +54,8 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       role: user.role,
       lguId: user.lguId,
       departmentId: user.departmentId,
+      enabledModules: user.lgu?.enabledModules ?? null,
+      moduleAccess: user.moduleAccess ?? null,
     };
 
     next();
@@ -61,6 +78,27 @@ export const requireRole = (...roles: string[]) => {
 
 export const requireSuperAdmin = requireRole('SUPER_ADMIN');
 export const requireLguAdmin = requireRole('SUPER_ADMIN', 'LGU_HR_ADMIN');
+
+/**
+ * Block access unless the user may enter the given module. Enforces two layers:
+ * the LGU's licensing and the user's own module grant. SUPER_ADMIN bypasses both.
+ * Must run after `authenticate`.
+ */
+export const requireModule = (module: ModuleKey) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    if (req.user.role === 'SUPER_ADMIN') return next();
+    if (!lguHasModule(req.user.enabledModules, module)) {
+      return res.status(403).json({ message: `The ${module} module is not enabled for your LGU` });
+    }
+    if (!userHasModule(req.user.role, req.user.moduleAccess, module)) {
+      return res.status(403).json({ message: `You do not have access to the ${module} module` });
+    }
+    next();
+  };
+};
 
 /** Block SUPER_ADMIN from write operations (view-only access) */
 export const denySuperAdminWrite = (req: AuthRequest, res: Response, next: NextFunction) => {

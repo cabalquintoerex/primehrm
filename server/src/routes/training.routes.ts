@@ -11,21 +11,24 @@ import {
   cancelTraining,
   markAttendance,
 } from '../controllers/training.controller';
-import { authenticate, requireRole, denySuperAdminWrite } from '../middleware/auth';
+import { authenticate, requireRole, requireModule, denySuperAdminWrite } from '../middleware/auth';
 
 const router = Router();
 
 const requireLguAdmin = requireRole('SUPER_ADMIN', 'LGU_HR_ADMIN');
 
-router.post('/', authenticate, requireLguAdmin, denySuperAdminWrite, createTraining);
-router.get('/', authenticate, requireLguAdmin, getTrainings);
-router.get('/:id', authenticate, requireLguAdmin, getTraining);
-router.put('/:id', authenticate, requireLguAdmin, denySuperAdminWrite, updateTraining);
-router.delete('/:id', authenticate, requireLguAdmin, denySuperAdminWrite, deleteTraining);
-router.post('/:id/participants', authenticate, requireLguAdmin, denySuperAdminWrite, addParticipants);
-router.delete('/:id/participants/:participantId', authenticate, requireLguAdmin, denySuperAdminWrite, removeParticipant);
-router.put('/:id/complete', authenticate, requireLguAdmin, denySuperAdminWrite, completeTraining);
-router.put('/:id/cancel', authenticate, requireLguAdmin, denySuperAdminWrite, cancelTraining);
-router.put('/:id/attendance', authenticate, requireLguAdmin, denySuperAdminWrite, markAttendance);
+// All training endpoints belong to the L&D module; block LGUs that have not licensed it.
+router.use(authenticate, requireModule('LND'));
+
+router.post('/', requireLguAdmin, denySuperAdminWrite, createTraining);
+router.get('/', requireLguAdmin, getTrainings);
+router.get('/:id', requireLguAdmin, getTraining);
+router.put('/:id', requireLguAdmin, denySuperAdminWrite, updateTraining);
+router.delete('/:id', requireLguAdmin, denySuperAdminWrite, deleteTraining);
+router.post('/:id/participants', requireLguAdmin, denySuperAdminWrite, addParticipants);
+router.delete('/:id/participants/:participantId', requireLguAdmin, denySuperAdminWrite, removeParticipant);
+router.put('/:id/complete', requireLguAdmin, denySuperAdminWrite, completeTraining);
+router.put('/:id/cancel', requireLguAdmin, denySuperAdminWrite, cancelTraining);
+router.put('/:id/attendance', requireLguAdmin, denySuperAdminWrite, markAttendance);
 
 export default router;

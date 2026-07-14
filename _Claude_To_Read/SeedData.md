@@ -19,12 +19,12 @@ auditLog → user → department → lgu
 ## Existing Seed Data
 
 ### LGUs (4)
-| Variable | Name | Slug |
-|----------|------|------|
-| `lgu` | City of Cebu | `cebu-city` |
-| `mandaue` | City of Mandaue | `mandaue-city` |
-| `lapulapu` | City of Lapu-Lapu | `lapu-lapu-city` |
-| `cebuProvince` | Province of Cebu | `cebu-province` |
+| Variable | Name | Slug | Enabled Modules |
+|----------|------|------|-----------------|
+| `lgu` | City of Cebu | `cebu-city` | RSP, L&D |
+| `mandaue` | City of Mandaue | `mandaue-city` | RSP only (L&D disabled — licensing demo) |
+| `lapulapu` | City of Lapu-Lapu | `lapu-lapu-city` | RSP, L&D |
+| `cebuProvince` | Province of Cebu | `cebu-province` | RSP, L&D |
 
 ### Departments (Cebu City — 5)
 Human Resource Office, Engineering Office, Treasury Office, Health Department, Social Welfare Office
@@ -47,6 +47,14 @@ Human Resource Office, Engineering Office, Treasury Office, Health Department, S
 | `applicant4` | annareyes | APPLICANT | — | — |
 | `applicant5` | pedrovillanueva | APPLICANT | — | — |
 | `applicant6` | elenamarcos | APPLICANT | — | — |
+
+### Per-User Module Access (`moduleAccess`)
+Deny-by-default (null = no modules). Seed sets an explicit grant on every LGU staff user:
+- HR admins: `["RSP","LND","ADMIN"]` — except `mandauehr` = `["RSP","ADMIN"]` (Mandaue has no L&D license)
+- Office admins: `["RSP"]` (all they can be granted — role gates the rest)
+- Super admin & applicants: null (they ignore per-user grants)
+
+Effective access = role ∩ LGU licensing ∩ per-user grant. See Status.md Phase 9F.
 
 ### Passwords
 - Super Admin: `admin123`

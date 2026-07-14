@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
 import prisma from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import { createAuditLog } from '../utils/audit';
+import { parseEnabledModules } from '../config/modules';
 
 export const getLgus = async (req: Request, res: Response) => {
   try {
@@ -97,8 +99,15 @@ export const createLgu = async (req: AuthRequest, res: Response) => {
   try {
     const { name, slug, logo, address, contactNumber, email } = req.body;
 
+    let enabledModules;
+    try {
+      enabledModules = parseEnabledModules(req.body.enabledModules);
+    } catch (e: any) {
+      return res.status(400).json({ message: e.message });
+    }
+
     const lgu = await prisma.lgu.create({
-      data: { name, slug, logo, address, contactNumber, email },
+      data: { name, slug, logo, address, contactNumber, email, enabledModules: enabledModules ?? undefined },
     });
 
     await createAuditLog({
@@ -124,6 +133,13 @@ export const updateLgu = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { name, slug, logo, address, contactNumber, email, isActive } = req.body;
 
+    let enabledModules;
+    try {
+      enabledModules = parseEnabledModules(req.body.enabledModules);
+    } catch (e: any) {
+      return res.status(400).json({ message: e.message });
+    }
+
     const existing = await prisma.lgu.findUnique({ where: { id: Number(id) } });
     if (!existing) {
       return res.status(404).json({ message: 'LGU not found' });
@@ -131,7 +147,17 @@ export const updateLgu = async (req: AuthRequest, res: Response) => {
 
     const lgu = await prisma.lgu.update({
       where: { id: Number(id) },
-      data: { name, slug, logo, address, contactNumber, email, isActive },
+      data: {
+        name,
+        slug,
+        logo,
+        address,
+        contactNumber,
+        email,
+        isActive,
+        // Only touch licensing when the client sends the field.
+        ...(req.body.enabledModules !== undefined ? { enabledModules: enabledModules ?? Prisma.DbNull } : {}),
+      },
     });
 
     await createAuditLog({

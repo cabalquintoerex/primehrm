@@ -1,12 +1,15 @@
 import { Router } from 'express';
 import { getUsers, createUser, updateUser, deleteUser } from '../controllers/user.controller';
-import { authenticate, requireLguAdmin } from '../middleware/auth';
+import { authenticate, requireLguAdmin, requireModule } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/', authenticate, requireLguAdmin, getUsers);
-router.post('/', authenticate, requireLguAdmin, createUser);
-router.put('/:id', authenticate, requireLguAdmin, updateUser);
-router.delete('/:id', authenticate, requireLguAdmin, deleteUser);
+// User management lives in the Administration module.
+router.use(authenticate, requireLguAdmin, requireModule('ADMIN'));
+
+router.get('/', getUsers);
+router.post('/', createUser);
+router.put('/:id', updateUser);
+router.delete('/:id', deleteUser);
 
 export default router;

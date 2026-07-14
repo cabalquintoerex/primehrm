@@ -247,7 +247,7 @@ export function CscBatchPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => navigate(`/admin/csc-batches/${batch.id}`)}
+                        onClick={() => navigate(`/rsp/csc-batches/${batch.id}`)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>

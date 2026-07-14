@@ -1,8 +1,17 @@
 import { Response } from 'express';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import prisma from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import { createAuditLog } from '../utils/audit';
+import { parseModuleAccess, ROLE_MODULES, type ModuleKey } from '../config/modules';
+
+/** Keep only module grants the target role can ever use (e.g. office admins get RSP only). */
+function clampToRole(role: string, modules: ModuleKey[] | null): ModuleKey[] | null {
+  if (!modules) return null;
+  const allowed = ROLE_MODULES[role] ?? [];
+  return modules.filter((m) => allowed.includes(m));
+}
 
 export const getUsers = async (req: AuthRequest, res: Response) => {
   try {
@@ -41,8 +50,9 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
           lastName: true,
           role: true,
           isActive: true,
+          moduleAccess: true,
           createdAt: true,
-          lgu: { select: { id: true, name: true, slug: true } },
+          lgu: { select: { id: true, name: true, slug: true, enabledModules: true } },
           department: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -68,6 +78,13 @@ export const createUser = async (req: AuthRequest, res: Response) => {
   try {
     const { email, username, password, firstName, lastName, role, lguId, departmentId } = req.body;
 
+    let moduleAccess;
+    try {
+      moduleAccess = clampToRole(role, parseModuleAccess(req.body.moduleAccess));
+    } catch (e: any) {
+      return res.status(400).json({ message: e.message });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Non-super admins can only create users for their own LGU
@@ -83,6 +100,7 @@ export const createUser = async (req: AuthRequest, res: Response) => {
         role,
         lguId: effectiveLguId,
         departmentId,
+        moduleAccess: moduleAccess ?? undefined,
       },
       select: {
         id: true,
@@ -91,6 +109,7 @@ export const createUser = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
+        moduleAccess: true,
         lguId: true,
         departmentId: true,
         createdAt: true,
@@ -134,6 +153,26 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     if (req.user!.role === 'SUPER_ADMIN') data.lguId = lguId;
     if (password) data.password = await bcrypt.hash(password, 12);
 
+    // Per-user module grant, clamped to what the (possibly changed) role allows.
+    if (req.body.moduleAccess !== undefined) {
+      let moduleAccess;
+      try {
+        moduleAccess = clampToRole(role ?? existing.role, parseModuleAccess(req.body.moduleAccess));
+      } catch (e: any) {
+        return res.status(400).json({ message: e.message });
+      }
+
+      // Self-lockout guard: you may not strip your own Administration access — that is the
+      // module holding this very screen.
+      if (existing.id === req.user!.id && !(moduleAccess ?? []).includes('ADMIN')) {
+        return res
+          .status(400)
+          .json({ message: 'You cannot remove your own Administration access' });
+      }
+
+      data.moduleAccess = moduleAccess ?? Prisma.DbNull;
+    }
+
     const user = await prisma.user.update({
       where: { id: Number(id) },
       data,
@@ -145,6 +184,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
         lastName: true,
         role: true,
         isActive: true,
+        moduleAccess: true,
         lguId: true,
         departmentId: true,
       },

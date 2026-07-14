@@ -16,12 +16,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Plus, Pencil, Trash2, Search, Loader2 } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import type { User, PaginatedResponse, Department, Lgu } from '@/types';
+import type { User, PaginatedResponse, Department, Lgu, ModuleKey } from '@/types';
+import { MODULES, MODULE_LIST } from '@/lib/modules';
 
 const userSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -55,6 +57,7 @@ export function UserPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState<User | null>(null);
+  const [moduleAccess, setModuleAccess] = useState<ModuleKey[]>(['RSP', 'LND', 'ADMIN']);
 
   // Fetch LGUs for SUPER_ADMIN
   const { data: lgus } = useQuery<Lgu[]>({
@@ -89,6 +92,27 @@ export function UserPage() {
   });
 
   const watchRole = watch('role');
+  const watchLguId = watch('lguId');
+  const editingSelf = !!editing && editing.id === currentUser?.id;
+
+  // The LGU whose licensing constrains the grant: own LGU for HR, selected/edited LGU for super admin.
+  const selectedLgu = !isSuperAdmin
+    ? (currentUser?.lgu as Lgu | undefined)
+    : editing
+      ? lgus?.find((l) => l.id === editing.lguId)
+      : lgus?.find((l) => l.id === Number(watchLguId));
+  const lguEnabled = selectedLgu?.enabledModules ?? null;
+
+  // Modules that can be granted to this user: allowed by role AND licensed to the LGU.
+  const grantable: ModuleKey[] = MODULE_LIST
+    .filter((m) => watchRole && m.roles.includes(watchRole))
+    .filter((m) => !m.licensable || !lguEnabled || lguEnabled.includes(m.key))
+    .map((m) => m.key);
+
+  const toggleModule = (key: ModuleKey, on: boolean) => {
+    if (editingSelf && key === 'ADMIN' && !on) return; // cannot strip own Administration access
+    setModuleAccess((prev) => (on ? [...new Set([...prev, key])] : prev.filter((k) => k !== key)));
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (formData: UserFormData) => {
@@ -96,6 +120,8 @@ export function UserPage() {
       if (!payload.password) delete payload.password;
       if (isSuperAdmin && formData.lguId) payload.lguId = Number(formData.lguId);
       else delete payload.lguId;
+      // Only send grants the (role ∩ LGU-license) actually permits.
+      payload.moduleAccess = moduleAccess.filter((k) => grantable.includes(k));
       if (editing) return api.put(`/users/${editing.id}`, payload);
       return api.post('/users', payload);
     },
@@ -123,12 +149,14 @@ export function UserPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setModuleAccess(['RSP', 'LND', 'ADMIN']); // default all-on; the grantable set prunes on submit
     reset({ email: '', username: '', password: '', firstName: '', lastName: '', role: 'LGU_HR_ADMIN', departmentId: null, lguId: '' });
     setDialogOpen(true);
   };
 
   const openEdit = (user: User) => {
     setEditing(user);
+    setModuleAccess((user.moduleAccess ?? []) as ModuleKey[]);
     reset({
       email: user.email,
       username: user.username,
@@ -184,6 +212,7 @@ export function UserPage() {
               <TableHead>Username</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Modules</TableHead>
               {isSuperAdmin && <TableHead>LGU</TableHead>}
               <TableHead>Department</TableHead>
               <TableHead>Status</TableHead>
@@ -192,9 +221,9 @@ export function UserPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={isSuperAdmin ? 8 : 7} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={isSuperAdmin ? 9 : 8} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
             ) : data?.data.length === 0 ? (
-              <TableRow><TableCell colSpan={isSuperAdmin ? 8 : 7} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={isSuperAdmin ? 9 : 8} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
             ) : (
               data?.data.map((user) => (
                 <TableRow key={user.id}>
@@ -202,6 +231,19 @@ export function UserPage() {
                   <TableCell>{user.username}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell><Badge variant="outline">{roleLabels[user.role] || user.role}</Badge></TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {(user.moduleAccess ?? []).length === 0 ? (
+                        <span className="text-xs text-muted-foreground">None</span>
+                      ) : (
+                        (user.moduleAccess ?? []).map((key) => (
+                          <Badge key={key} variant="outline" className="text-[10px]">
+                            {MODULES[key as ModuleKey]?.label ?? key}
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </TableCell>
                   {isSuperAdmin && <TableCell>{user.lgu?.name || '-'}</TableCell>}
                   <TableCell>{user.department?.name || '-'}</TableCell>
                   <TableCell>
@@ -326,6 +368,48 @@ export function UserPage() {
                   />
                 </div>
               )}
+
+              {/* Per-user module access */}
+              <div className="space-y-2">
+                <Label>Module Access</Label>
+                <p className="text-xs text-muted-foreground">
+                  Which modules this user can enter. Users start with no access until granted.
+                </p>
+                <div className="space-y-2 rounded-md border p-3">
+                  {grantable.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Select a role{isSuperAdmin && !editing ? ' and LGU' : ''} to assign modules.
+                    </p>
+                  ) : (
+                    grantable.map((key) => {
+                      const mod = MODULES[key];
+                      const Icon = mod.icon;
+                      const lock = editingSelf && key === 'ADMIN';
+                      return (
+                        <div key={key} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{mod.label}</p>
+                              <p className="text-xs text-muted-foreground">{mod.name}</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={moduleAccess.includes(key)}
+                            disabled={lock}
+                            onCheckedChange={(c) => toggleModule(key, c)}
+                          />
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                {editingSelf && (
+                  <p className="text-xs text-amber-600">
+                    You can't remove your own Administration access.
+                  </p>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>

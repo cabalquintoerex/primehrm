@@ -77,7 +77,12 @@
 - http://localhost:3000 — Super admin login
 - http://localhost:3000/cebu-city/login — LGU-branded login
 - http://localhost:3000/lapu-lapu-city/careers — Public careers page
+- http://localhost:3000/modules — Module launcher (after login)
 - http://localhost:5000/api/health — Server health check
+
+> **Note:** As of the Module Separation phase, admin routes are namespaced by module —
+> `/rsp/*` (recruitment), `/lnd/*` (training), `/admin/*` (LGUs, departments, users, audit logs).
+> Old `/admin/*` paths for moved pages redirect automatically.
 
 ---
 
@@ -110,7 +115,7 @@
 - [x] Application stats endpoint (GET /applications/stats) — counts by status
 - [x] Office admin scoping — sees only endorsed+ applications for their department
 - [x] Sidebar nav: "Applications" visible to SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN
-- [x] Routes: /admin/applications (list) and /admin/applications/:id (detail)
+- [x] Routes: /rsp/applications (list) and /rsp/applications/:id (detail)
 
 ### Application Status Workflow
 ```
@@ -150,7 +155,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 - [x] Cache invalidation — interview mutations (complete, cancel, no-show) invalidate applications query
 - [x] Database models: InterviewSchedule, InterviewScheduleApplicant, AssessmentScore
 - [x] Sidebar nav: "Interviews" for SUPER_ADMIN, LGU_HR_ADMIN
-- [x] Routes: /admin/interviews, /admin/interviews/:id, /admin/assessments/:positionId
+- [x] Routes: /rsp/interviews, /rsp/interviews/:id, /rsp/assessments/:positionId
 - [ ] Email notifications (Nodemailer) — deferred
 - [ ] Generate Certificate of Qualified Applicants (PDF) — deferred
 
@@ -169,7 +174,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 - [x] Server endpoint: GET /assessments/qualified — returns QUALIFIED/SELECTED applicants with scores, filterable by positionId and departmentId
 - [x] Server endpoint: POST /assessments/select — bulk select applicants for appointment
 - [x] Sidebar nav: "Selection" with Award icon for SUPER_ADMIN, LGU_HR_ADMIN
-- [x] Route: /admin/selection
+- [x] Route: /rsp/selection
 
 ---
 
@@ -192,7 +197,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 - [x] Auto-revert appointment to PENDING when a requirement is unverified
 - [x] Edit appointment/oath dates
 - [x] Sidebar nav: "Appointments" with FileCheck icon for SUPER_ADMIN, LGU_HR_ADMIN
-- [x] Routes: /admin/appointments (list) and /admin/appointments/:id (detail)
+- [x] Routes: /rsp/appointments (list) and /rsp/appointments/:id (detail)
 - [x] Audit logging on all mutations (CREATE_APPOINTMENT, UPDATE_APPOINTMENT, ADD/DELETE/VERIFY/UNVERIFY requirement)
 
 ---
@@ -292,10 +297,10 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 
 ### Client
 - [x] Training types added to types/index.ts (TrainingType, TrainingStatus, Training, TrainingParticipant)
-- [x] TrainingPage (/admin/training) — list with stats cards (Total, Upcoming, Ongoing, Completed), search, status/type filters, paginated table, create/edit dialog with SuggestionInput quick-fill, delete confirmation
-- [x] TrainingDetailPage (/admin/training/:id) — training info card, participants table (Name, Department, Attended, Completed), add participants form dialog (multi-row with first name, last name, department dropdown), attendance marking, complete/cancel actions
+- [x] TrainingPage (/lnd/training) — list with stats cards (Total, Upcoming, Ongoing, Completed), search, status/type filters, paginated table, create/edit dialog with SuggestionInput quick-fill, delete confirmation
+- [x] TrainingDetailPage (/lnd/training/:id) — training info card, participants table (Name, Department, Attended, Completed), add participants form dialog (multi-row with first name, last name, department dropdown), attendance marking, complete/cancel actions
 - [x] Sidebar nav: "Training" with GraduationCap icon after Appointments (SUPER_ADMIN, LGU_HR_ADMIN)
-- [x] App.tsx routes: /admin/training and /admin/training/:id
+- [x] App.tsx routes: /lnd/training and /lnd/training/:id
 - [x] View button with Eye icon in training list actions column
 
 ### Not Yet Done
@@ -333,7 +338,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 - [x] Position form — CSC Batch required field, auto-fills openDate/closeDate from batch
 - [x] Positions table — CSC Batch column, separate Unpublish and Close buttons for OPEN positions
 - [x] Sidebar: "CSC Batches" (FileStack icon) before Positions (SUPER_ADMIN, LGU_HR_ADMIN)
-- [x] Routes: /admin/csc-batches and /admin/csc-batches/:id
+- [x] Routes: /rsp/csc-batches and /rsp/csc-batches/:id
 
 ### Export Features
 - [x] Export to PDF (CS Form No. 9, Revised 2025) — `client/src/lib/generateCSCBatchForm.ts`
@@ -376,7 +381,7 @@ SUPER_ADMIN can only **manage** (full CRUD) LGUs, Departments, and Users. All ot
 - [x] `client/src/features/process-flow/ProcessFlowPage.tsx` — 13-step RSP process cards with icons, status workflow summary, role permissions table
 - [x] Role Permissions table visible only to SUPER_ADMIN
 - [x] Accessible via Header profile dropdown menu ("Process Flow" with GitBranch icon)
-- [x] Routes: /admin/process-flow and /applicant/process-flow (all logged-in users)
+- [x] Routes: /rsp/process-flow and /applicant/process-flow (all logged-in users)
 - [x] Reference doc: `_Claude_To_Read/ProcessFlow.md` updated with current SUPER_ADMIN view-only permissions
 
 ---
@@ -396,7 +401,7 @@ SUPER_ADMIN can only **manage** (full CRUD) LGUs, Departments, and Users. All ot
 - [x] Training reports — donut chart by type, bar chart by status
 - [x] Server endpoints: `GET /api/reports/positions`, `/api/reports/applications`, `/api/reports/trainings`
 - [x] Sidebar nav: "Reports" with BarChart3 icon (SUPER_ADMIN, LGU_HR_ADMIN)
-- [x] Route: /admin/reports
+- [x] Route: /rsp/reports
 - [x] shadcn/ui Tabs component added (`client/src/components/ui/tabs.tsx`)
 
 ### 8.3 Audit Log Viewer
@@ -551,6 +556,144 @@ cd server && npm run db:generate
 
 ---
 
+## Phase 9: Module Separation (RSP / L&D / Administration) — 9A–9C COMPLETED
+
+Training was previously inside the single `/admin` area. The app is now split into two business
+modules plus a system section, with a post-login launcher and a sidebar switcher.
+
+### Route Namespaces
+| Section | Base | Pages | Who can enter |
+|---------|------|-------|---------------|
+| RSP | `/rsp` | Dashboard, CSC Batches, Positions, Applications, Interviews, Selection, Appointments, Reports | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
+| L&D | `/lnd` | Dashboard, Training, Reports | SUPER_ADMIN, LGU_HR_ADMIN |
+| Administration | `/admin` | Dashboard (super admin), LGU Management, Departments, Users, Audit Logs | SUPER_ADMIN, LGU_HR_ADMIN |
+| Applicant portal | `/applicant` | Dashboard, PDS, My Applications | APPLICANT |
+
+### Post-Login Destination
+| Role | Lands on | Why |
+|------|----------|-----|
+| SUPER_ADMIN | `/admin` → `/admin/lgus` | Administration is their whole job |
+| LGU_HR_ADMIN | `/modules` | Two modules available → launcher |
+| LGU_OFFICE_ADMIN | `/rsp` → `/rsp/dashboard` | Only one module available → launcher skipped |
+| APPLICANT | `/applicant/dashboard` | No modules |
+
+### 9A — Module Foundation (COMPLETED)
+- [x] `client/src/lib/modules.ts` — registry: `MODULES`, `moduleForPath`, `canAccessModule`, `modulesForUser`, `launcherModulesForUser`, `defaultDestination`, `homeFor`, `postLoginDestination`
+- [x] `ModuleKey` type (`'RSP' | 'LND' | 'ADMIN'`) declared in `types/index.ts` to keep the import direction one-way (no cycle with `modules.ts`)
+- [x] `client/src/hooks/useActiveModule.ts` — `useActiveModule`, `useEnabledModules`, `useModuleAccess`
+- [x] Auth store: persisted `moduleMemory: { userId, module }` + `rememberModule` / `forgetModule`
+- [x] `moduleMemory` deliberately survives logout (device preference, not session state)
+- [x] `ProtectedRoute` gains a `module` prop — checks role **and** LGU licensing
+- [x] `Lgu.enabledModules?: ModuleKey[] | null` added to client types (server field lands in 9E)
+
+### 9B — Route Restructure (COMPLETED)
+- [x] All 54 hardcoded `/admin/*` refs updated across 19 files
+- [x] `postLoginDestination()` replaces hardcoded `/admin/dashboard` in LoginPage & RegisterPage
+- [x] `homeFor(user)` replaces `role === 'APPLICANT' ? ... : ...` ternaries in CareersPage, PositionDetailPage, ProtectedRoute, Sidebar brand link
+- [x] Header profile link is now module-relative (`${basePath}/profile`)
+- [x] Process Flow only offered inside RSP and the applicant portal (it documents the RSP pipeline)
+- [x] `AdminIndexRedirect` — `/admin` sends SUPER_ADMIN to `lgus`, HR admin to `departments`
+- [x] `LegacyRedirect` for 11 moved segments — `/admin/positions/3` → `/rsp/positions/3`, preserves query string
+
+### 9C — Launcher & Switcher (COMPLETED)
+- [x] `client/src/features/modules/ModuleLauncherPage.tsx` — emerald gradient, LGU logo + name, two module cards, sign-out
+- [x] Unavailable modules render as locked cards with a reason ("Not enabled for this LGU" vs "Not available for your role")
+- [x] "Remember my choice and skip this screen next time" Switch — only committed when a module is actually clicked
+- [x] Sidebar `ModuleSwitcher` dropdown — current module, switch targets with check mark, "All modules" link
+- [x] Sidebar nav items tagged with `module` and filtered by active module + role
+- [x] Administration gear icon in Header (hidden while already inside Administration)
+
+### Key Design Decisions
+| Decision | Rationale |
+|----------|-----------|
+| Active module **derived from URL**, never stored | Storing it lets the sidebar and route desync (e.g. at `/lnd/training` while showing the RSP sidebar). `moduleForPath(pathname)` cannot disagree with itself. |
+| Launcher after login, not a picker on the login form | Login establishes identity, not destination. A picker would force module choice before auth and require logout to switch. |
+| Administration is a header gear, not a launcher card | It is system settings, not a business module. Keeps the launcher honest and scales to PRIME-HRM pillars 3 & 4. |
+| `moduleMemory` keyed to `userId` | A different user on the same browser still sees the launcher instead of inheriting the previous user's module. |
+| Remember toggle commits on card click, not on toggle | Flipping the switch alone would otherwise silently bind the user to a module they never picked. |
+| LGU_OFFICE_ADMIN excluded from L&D | Every L&D page is HR-only today; including them meant clicking the L&D card bounced straight back to the launcher. Re-add when department-level training assignment ships. |
+| `defaultDestination` skips launcher at 1 module | A launcher with a single card is just a speed bump. |
+
+### Verification
+- Client typecheck clean (2 pre-existing `suggestion-input.tsx` errors unrelated)
+- Production `vite build` succeeds
+- All new/changed files transform without error on the running Vite dev server
+- Live API confirmed: login payload carries `lgu` (with logo) for HR admins, `null` for super admin
+
+### 9D — Split Dashboards & Reports (COMPLETED)
+Three dashboards, one per section, each with its own endpoint:
+
+| Dashboard | Route | Endpoint | Who |
+|-----------|-------|----------|-----|
+| Administration (system overview) | `/admin/dashboard` | `GET /api/dashboard/admin` | SUPER_ADMIN |
+| Recruitment | `/rsp/dashboard` | `GET /api/dashboard/rsp` | SUPER_ADMIN (all LGUs), LGU_HR_ADMIN, LGU_OFFICE_ADMIN (dept-scoped) |
+| Learning & Development | `/lnd/dashboard` | `GET /api/dashboard/lnd` | SUPER_ADMIN (all LGUs), LGU_HR_ADMIN |
+
+- [x] `GET /api/dashboard/stats` retired; replaced by `/admin`, `/rsp`, `/lnd` (see `dashboard.controller.ts`, `dashboard.routes.ts`)
+- [x] The old super-admin "system overview" moved out of `/rsp/dashboard` into `/admin/dashboard` (it was orphaned — super admins land on `/admin`, never `/rsp`)
+- [x] `AdminIndexRedirect`: `/admin` → `dashboard` for SUPER_ADMIN, `departments` for HR admin
+- [x] `/lnd` index now redirects to `dashboard` (was `training`)
+- [x] Cross-module "upcoming trainings" banner removed from the RSP dashboard
+- [x] Client dashboard split into `AdminDashboardPage`, `RspDashboardPage`, `LndDashboardPage` + shared `components.tsx` (`StatCard`, `DashboardLoader`, `STATUS_CONFIG`)
+- [x] L&D dashboard stats: total/upcoming/ongoing/completed trainings, participants enrolled vs trained, attendance rate, recent trainings table
+- [x] Reports split: `RspReportsPage` (`/rsp/reports`, Positions + Applications tabs) and `LndReportsPage` (`/lnd/reports`, training charts) + shared `reportCharts.tsx` (`STATUS_COLORS`, `formatLabel`, `ChartLoader`, `EmptyChart`)
+- [x] Report endpoints unchanged (`/reports/positions`, `/reports/applications`, `/reports/trainings` already separate)
+- [x] Sidebar: L&D gains Dashboard + Reports; Administration gains Dashboard (SUPER_ADMIN)
+- [x] Verified live: all three dashboard endpoints return correct data; `/dashboard/admin` returns 403 for HR admin
+
+### 9E — Per-LGU Module Licensing (COMPLETED)
+A SUPER_ADMIN can license RSP and/or L&D per LGU. Administration is never licensable.
+
+- [x] `enabledModules Json?` on `lgus` table (`@map("enabled_modules")`). **Null = all modules on** — matches the client's `?? undefined` handling, avoids MySQL JSON-default issues
+- [x] `server/src/config/modules.ts` — `LICENSABLE_MODULES` (`['RSP','LND']`), `parseEnabledModules` (validates + de-dupes, throws on bad key), `lguHasModule`
+- [x] `createLgu` / `updateLgu` accept `enabledModules`; invalid keys → 400; update uses `Prisma.DbNull` to clear
+- [x] `enabledModules` included in `login` and `getMe` `lgu` selects; auto-present in `getLgus` / `getLgu` (no select)
+- [x] `authenticate` middleware fetches `lgu.enabledModules` and exposes it on `req.user`
+- [x] `requireModule(key)` middleware — 403 when the user's LGU lacks the module; SUPER_ADMIN and no-LGU users bypass
+- [x] Applied `requireModule('LND')` to all training routes, `GET /dashboard/lnd`, `GET /reports/trainings`
+- [x] RSP left client-enforced for now (it is the core module, rarely disabled); middleware is ready to apply the same way if needed
+- [x] Client: `LguPage` dialog has RSP / L&D toggles (Switch); table shows a Modules column; sends `enabledModules` on create/update
+- [x] Seed: Cebu City, Lapu-Lapu, Cebu Province = both modules; **Mandaue = RSP only** (demo of a disabled module)
+- [x] Verified live: `mandauehr` gets 403 on `/trainings`, `/dashboard/lnd`, `/reports/trainings` but 200 on `/dashboard/rsp`; enabling L&D via PUT flips it to 200; invalid module key → 400
+
+#### How Licensing Interacts With the Client
+- `mandauehr` has `enabledModules: ['RSP']` → `launcherModulesForUser` returns only RSP → launcher is skipped, lands on `/rsp`
+- If they reach `/modules`, the L&D card renders locked ("Not enabled for this LGU")
+- The L&D route group is guarded by `ProtectedRoute module="LND"` → redirected to their home if they navigate there directly
+
+### 9F — Per-User Module Access (COMPLETED)
+HR admins (and super admins) grant modules to individual users within their LGU. This is a third
+layer **below** LGU licensing.
+
+**Effective access = role ∩ LGU licensing ∩ per-user grant.** SUPER_ADMIN bypasses the last two.
+
+- [x] `moduleAccess Json?` on `users` table (`@map("module_access")`). **Null = no modules (deny-by-default)** — the opposite of the LGU field, which is null = all
+- [x] All three modules grantable per user (RSP, L&D, **and Administration**), clamped to what the user's role allows (office admins → RSP only)
+- [x] `server/src/config/modules.ts` extended: `ALL_MODULES`, `ROLE_MODULES` (server mirror of client role→module map), `parseModuleAccess`, `userHasModule`; `lguHasModule` now returns true for non-licensable ADMIN
+- [x] `authenticate` loads `moduleAccess`; `requireModule(key)` now checks **both** LGU license and per-user grant
+- [x] `requireModule('ADMIN')` applied to `/users` and `/audit-logs` (Administration surfaces). Department reads left open — RSP needs them
+- [x] `createUser` / `updateUser` accept `moduleAccess`, validate + clamp to role; invalid key → 400
+- [x] **Self-lockout guard**: a user editing their own record cannot remove their own ADMIN grant (server 400 + client disables the toggle)
+- [x] `moduleAccess` returned in `login` / `getMe` / `getUsers`; `getUsers` `lgu` select now includes `enabledModules` (so the super-admin form can compute grantable modules)
+- [x] Client: `canAccessModule` enforces the grant (deny-by-default, super admin bypass); `accessOptionsFor(user)` builds the opts; threaded through `homeFor` / `postLoginDestination` / `useModuleAccess` / `ProtectedRoute`
+- [x] Launcher: third locked-card reason — role → LGU license → **"Not assigned to your account"**
+- [x] `UserPage`: module toggle switches in the create/edit dialog (only grantable modules shown), Modules table column, self-lockout disables own ADMIN toggle
+- [x] Seed: every HR/office admin gets an explicit grant (HR = RSP+LND+ADMIN, or RSP+ADMIN for Mandaue which lacks L&D; office admins = RSP)
+- [x] Verified live: office admin (RSP only) → 403 on `/users` and `/trainings`, 200 on `/applications`; created a recruitment-only HR admin (RSP only) → 403 on L&D + Administration; self-lockout, role-clamp, and invalid-key all rejected
+
+#### The Three-Layer Access Model
+```
+LGU licensing (super admin)   — which modules the LGU bought        (null = all)
+   ∩ Role                     — which modules the role can ever use
+   ∩ Per-user grant (HR)      — which modules THIS user may enter    (null = none)
+   = effective module access
+```
+Server enforcement: L&D via `requireModule('LND')` (training, L&D dashboard/reports); Administration
+via `requireModule('ADMIN')` (users, audit-logs). RSP stays client-enforced (core module; its routes
+mix in public/applicant endpoints).
+
+---
+
 ## Upcoming Work (To Do)
 
 ### Appointment Document Annexes
@@ -561,7 +704,7 @@ cd server && npm run db:generate
 - [ ] ANNEX L — CS Form No. 4, Revised 2025 — Certification of Assumption to Duty — Generate
 
 ### L&D Module Overhaul
-- [ ] Module switcher after login (RSP / L&D) + toggle in sidebar/header
+- [x] Module switcher after login (RSP / L&D) + toggle in sidebar/header — done in Phase 9C
 - [ ] Public training portal at `/:lgu-slug/trainings`
 - [ ] Training interest registration (any logged-in user)
 - [ ] HR manages interest submissions (approve/reject/waitlist)

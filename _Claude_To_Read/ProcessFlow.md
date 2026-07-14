@@ -1,12 +1,43 @@
 # LGU PRIME-HRM — Process Flow
 
+## Module Structure
+
+The application is split into two business modules plus a system section. After login, users
+land on the module launcher (`/modules`) and pick where to go; a switcher at the top of the
+sidebar swaps modules without re-logging.
+
+| Section | Base path | Pages | Who can enter |
+|---------|-----------|-------|---------------|
+| **RSP** — Recruitment, Selection & Placement | `/rsp` | Dashboard, CSC Batches, Positions, Applications, Interviews, Selection, Appointments, Reports | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
+| **L&D** — Learning & Development | `/lnd` | Dashboard, Training, Reports | SUPER_ADMIN, LGU_HR_ADMIN |
+| **Administration** | `/admin` | Dashboard (super admin), LGU Management, Departments, Users, Audit Logs | SUPER_ADMIN, LGU_HR_ADMIN |
+| Applicant portal | `/applicant` | Dashboard, PDS, My Applications | APPLICANT |
+
+Notes:
+- Administration is **not** a launcher card — it is reached via the gear icon in the header.
+- A user with exactly one available module skips the launcher entirely. LGU_OFFICE_ADMIN has
+  only RSP, so they land on `/rsp` directly.
+- LGU_OFFICE_ADMIN is excluded from L&D until department-level training assignment ships.
+- SUPER_ADMIN lands on `/admin` (Administration) by default.
+- Legacy `/admin/*` paths for moved pages redirect to their new module path.
+- A SUPER_ADMIN can license RSP and/or L&D per LGU (LGU Management → Enabled Modules). An LGU
+  with L&D disabled hides the module from its staff (locked launcher card) and the server rejects
+  its L&D API calls with 403. Administration is never licensable.
+- An HR admin (or super admin) grants modules per user (User Management → Module Access). Access is
+  **deny-by-default**: a user sees only the modules explicitly granted, within the LGU's licensing
+  and their role. All three modules — RSP, L&D, and Administration — are grantable, so HR can e.g.
+  make a recruitment-only staffer who can't manage users. You cannot remove your own Administration
+  access. Effective access = role ∩ LGU licensing ∩ per-user grant.
+
+---
+
 ## Recruitment, Selection, and Placement (RSP) Process
 
 ---
 
 ### Step 1: Create CSC Publication Batch
 **Actor:** LGU HR Admin
-**Module:** CSC Batches (`/admin/csc-batches`)
+**Module:** CSC Batches (`/rsp/csc-batches`)
 
 1. HR Admin clicks "New Batch"
 2. Fills in:
@@ -21,7 +52,7 @@
 
 ### Step 2: Create Positions and Assign to Batch
 **Actor:** LGU HR Admin
-**Module:** Positions (`/admin/positions`)
+**Module:** Positions (`/rsp/positions`)
 
 1. HR Admin clicks "Add Position"
 2. Fills in position details:
@@ -34,13 +65,13 @@
 3. Position is created with status **DRAFT**
 4. Position is linked to the selected CSC batch
 
-> **Alternative:** Positions can also be added to a batch from the Batch Detail page (`/admin/csc-batches/:id`) using the "Add Positions" button.
+> **Alternative:** Positions can also be added to a batch from the Batch Detail page (`/rsp/csc-batches/:id`) using the "Add Positions" button.
 
 ---
 
 ### Step 3: Publish the CSC Batch
 **Actor:** LGU HR Admin
-**Module:** CSC Batch Detail Page (`/admin/csc-batches/:id`)
+**Module:** CSC Batch Detail Page (`/rsp/csc-batches/:id`)
 
 1. After CSC publishes the positions on their official website, HR Admin clicks "Mark as Published"
 2. System automatically:
@@ -72,7 +103,7 @@
 
 ### Step 5: HR Reviews and Endorses to Office/Department
 **Actor:** LGU HR Admin
-**Module:** Applications (`/admin/applications`)
+**Module:** Applications (`/rsp/applications`)
 
 1. HR Admin views submitted applications with filters (by position, status, search by name)
 2. Opens an application to review:
@@ -87,7 +118,7 @@
 
 ### Step 6: Office Admin Screens and Shortlists
 **Actor:** LGU Office Admin
-**Module:** Applications (`/admin/applications`)
+**Module:** Applications (`/rsp/applications`)
 
 1. Office Admin sees only endorsed applications for their department
 2. Reviews applicant qualifications and documents
@@ -100,7 +131,7 @@
 
 ### Step 7: HR Schedules Interviews
 **Actor:** LGU HR Admin
-**Module:** Interviews (`/admin/interviews`)
+**Module:** Interviews (`/rsp/interviews`)
 
 1. HR Admin creates an interview schedule:
    - Selects the **Position**
@@ -113,7 +144,7 @@
 
 ### Step 8: Conduct Interview and Mark Attendance
 **Actor:** LGU HR Admin
-**Module:** Interview Detail (`/admin/interviews/:id`)
+**Module:** Interview Detail (`/rsp/interviews/:id`)
 
 1. On the interview date, HR Admin opens the interview detail page
 2. Marks attendance for each applicant:
@@ -127,7 +158,7 @@
 
 ### Step 9: Encode Assessment Scores
 **Actor:** LGU HR Admin
-**Module:** Assessment (`/admin/assessments/:positionId`)
+**Module:** Assessment (`/rsp/assessments/:positionId`)
 
 1. After interview completion, HR Admin opens the assessment scoring page
 2. Inputs scores for each interviewed applicant across 7 criteria:
@@ -141,7 +172,7 @@
 
 ### Step 10: Select for Appointment
 **Actor:** LGU HR Admin (on behalf of Head of Agency / HRMPSB)
-**Module:** Selection (`/admin/selection`)
+**Module:** Selection (`/rsp/selection`)
 
 1. HR Admin views all qualified applicants grouped by position
 2. Each position shows:
@@ -156,7 +187,7 @@
 
 ### Step 11: Create Appointment
 **Actor:** LGU HR Admin
-**Module:** Selection → Appointments (`/admin/appointments`)
+**Module:** Selection → Appointments (`/rsp/appointments`)
 
 1. HR Admin clicks **"Appoint"** for selected applicants
 2. Enters:
@@ -171,7 +202,7 @@
 
 ### Step 12: Generate Appointment Documents
 **Actor:** LGU HR Admin
-**Module:** Appointment Detail (`/admin/appointments/:id`)
+**Module:** Appointment Detail (`/rsp/appointments/:id`)
 
 1. HR Admin can generate and print:
    - **Appointment Form** (CS Form 33-B) — with LGU header, appointee details, position info, salary, signatures
@@ -182,7 +213,7 @@
 
 ### Step 13: Final Requirements Verification
 **Actor:** LGU HR Admin
-**Module:** Appointment Detail (`/admin/appointments/:id`)
+**Module:** Appointment Detail (`/rsp/appointments/:id`)
 
 1. HR Admin manages final requirements for the appointee:
    - Can add custom requirements beyond the 8 defaults
@@ -237,6 +268,9 @@ PENDING → COMPLETED (auto, when all requirements verified)
 
 | Action | SUPER_ADMIN | LGU_HR_ADMIN | LGU_OFFICE_ADMIN | APPLICANT |
 |--------|:-----------:|:------------:|:-----------------:|:---------:|
+| Enter RSP module | Yes | Yes | Yes | - |
+| Enter L&D module | Yes | Yes | - | - |
+| Enter Administration | Yes | Yes | - | - |
 | Manage LGUs | Yes | - | - | - |
 | Manage Departments | Yes | Yes | - | - |
 | Manage Users | Yes | Yes | - | - |

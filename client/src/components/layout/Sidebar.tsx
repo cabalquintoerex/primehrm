@@ -15,13 +15,25 @@ import {
   Calendar,
   Award,
   FileCheck,
-  User,
   GraduationCap,
   FileStack,
   BarChart3,
   ScrollText,
+  ChevronsUpDown,
+  LayoutGrid,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useActiveModule, useModuleAccess } from '@/hooks/useActiveModule';
+import { homeFor, type ModuleKey } from '@/lib/modules';
 
 interface SidebarProps {
   open: boolean;
@@ -33,124 +45,229 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   roles: string[];
+  /** Which module owns this item. Null items belong to the applicant portal. */
+  module: ModuleKey | null;
 }
 
 const navItems: NavItem[] = [
+  // ---- Recruitment, Selection & Placement ----
+  {
+    title: 'Dashboard',
+    href: '/rsp/dashboard',
+    icon: LayoutDashboard,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN', 'LGU_OFFICE_ADMIN'],
+    module: 'RSP',
+  },
+  {
+    title: 'CSC Batches',
+    href: '/rsp/csc-batches',
+    icon: FileStack,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'RSP',
+  },
+  {
+    title: 'Positions',
+    href: '/rsp/positions',
+    icon: Briefcase,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'RSP',
+  },
+  {
+    title: 'Applications',
+    href: '/rsp/applications',
+    icon: ClipboardList,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN', 'LGU_OFFICE_ADMIN'],
+    module: 'RSP',
+  },
+  {
+    title: 'Interviews',
+    href: '/rsp/interviews',
+    icon: Calendar,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'RSP',
+  },
+  {
+    title: 'Selection',
+    href: '/rsp/selection',
+    icon: Award,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'RSP',
+  },
+  {
+    title: 'Appointments',
+    href: '/rsp/appointments',
+    icon: FileCheck,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'RSP',
+  },
+  {
+    title: 'Reports',
+    href: '/rsp/reports',
+    icon: BarChart3,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'RSP',
+  },
+
+  // ---- Learning & Development ----
+  {
+    title: 'Dashboard',
+    href: '/lnd/dashboard',
+    icon: LayoutDashboard,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'LND',
+  },
+  {
+    title: 'Training',
+    href: '/lnd/training',
+    icon: GraduationCap,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'LND',
+  },
+  {
+    title: 'Reports',
+    href: '/lnd/reports',
+    icon: BarChart3,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'LND',
+  },
+
+  // ---- Administration ----
   {
     title: 'Dashboard',
     href: '/admin/dashboard',
     icon: LayoutDashboard,
-    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN', 'LGU_OFFICE_ADMIN'],
+    roles: ['SUPER_ADMIN'],
+    module: 'ADMIN',
   },
   {
     title: 'LGU Management',
     href: '/admin/lgus',
     icon: Building2,
     roles: ['SUPER_ADMIN'],
+    module: 'ADMIN',
   },
   {
     title: 'Departments',
     href: '/admin/departments',
     icon: FolderTree,
     roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
-  },
-  {
-    title: 'CSC Batches',
-    href: '/admin/csc-batches',
-    icon: FileStack,
-    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
-  },
-  {
-    title: 'Positions',
-    href: '/admin/positions',
-    icon: Briefcase,
-    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'ADMIN',
   },
   {
     title: 'Users',
     href: '/admin/users',
     icon: Users,
     roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
-  },
-  {
-    title: 'Applications',
-    href: '/admin/applications',
-    icon: ClipboardList,
-    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN', 'LGU_OFFICE_ADMIN'],
-  },
-  {
-    title: 'Interviews',
-    href: '/admin/interviews',
-    icon: Calendar,
-    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
-  },
-  {
-    title: 'Selection',
-    href: '/admin/selection',
-    icon: Award,
-    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
-  },
-  {
-    title: 'Appointments',
-    href: '/admin/appointments',
-    icon: FileCheck,
-    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
-  },
-  {
-    title: 'Training',
-    href: '/admin/training',
-    icon: GraduationCap,
-    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
-  },
-  {
-    title: 'Reports',
-    href: '/admin/reports',
-    icon: BarChart3,
-    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'ADMIN',
   },
   {
     title: 'Audit Logs',
     href: '/admin/audit-logs',
     icon: ScrollText,
     roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'ADMIN',
   },
-  // Applicant nav items
+
+  // ---- Applicant portal ----
   {
     title: 'Dashboard',
     href: '/applicant/dashboard',
     icon: LayoutDashboard,
     roles: ['APPLICANT'],
+    module: null,
   },
   {
     title: 'Personal Data Sheet',
     href: '/applicant/pds',
     icon: FileText,
     roles: ['APPLICANT'],
+    module: null,
   },
   {
     title: 'My Applications',
     href: '/applicant/applications',
     icon: ClipboardList,
     roles: ['APPLICANT'],
+    module: null,
   },
 ];
+
+function ModuleSwitcher({ onNavigate }: { onNavigate: () => void }) {
+  const activeModule = useActiveModule();
+  const { modules } = useModuleAccess();
+
+  if (!activeModule) return null;
+
+  const ActiveIcon = activeModule.icon;
+
+  return (
+    <div className="border-b px-2 py-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-2 px-2 h-auto py-2 hover:bg-accent"
+          >
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <ActiveIcon className="h-4 w-4" />
+            </div>
+            <div className="flex flex-col items-start min-w-0 flex-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none">
+                Module
+              </span>
+              <span className="text-sm font-semibold truncate leading-tight">
+                {activeModule.label}
+              </span>
+            </div>
+            <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="start">
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            Switch module
+          </DropdownMenuLabel>
+          {modules.map((mod) => {
+            const Icon = mod.icon;
+            const isActive = mod.key === activeModule.key;
+            return (
+              <DropdownMenuItem key={mod.key} asChild>
+                <Link to={mod.basePath} onClick={onNavigate} className="cursor-pointer">
+                  <Icon className="mr-2 h-4 w-4" />
+                  <span className="flex-1">{mod.label}</span>
+                  {isActive && <Check className="h-4 w-4 text-primary" />}
+                </Link>
+              </DropdownMenuItem>
+            );
+          })}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/modules" onClick={onNavigate} className="cursor-pointer">
+              <LayoutGrid className="mr-2 h-4 w-4" />
+              All modules
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation();
   const { user } = useAuthStore();
+  const activeModule = useActiveModule();
 
-  const basePath = user?.role === 'APPLICANT' ? '/applicant' : '/admin';
-
+  // Only show nav for the module you are currently in; applicants have no module.
   const filteredItems = navItems.filter(
-    (item) => user && item.roles.includes(user.role)
+    (item) =>
+      user && item.roles.includes(user.role) && item.module === (activeModule?.key ?? null)
   );
-  const profileHref = `${basePath}/profile`;
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
       {/* Logo / Brand */}
       <div className="flex h-12 items-center border-b px-4">
-        <Link to={user?.role === 'APPLICANT' ? '/applicant/dashboard' : '/admin/dashboard'} className="flex items-center gap-2">
+        <Link to={user ? homeFor(user) : '/'} className="flex items-center gap-2">
           {user?.lgu?.logo ? (
             <img src={user.lgu.logo} alt={user.lgu.name} className="h-6 w-6 rounded object-cover" />
           ) : (
@@ -170,11 +287,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </Button>
       </div>
 
+      <ModuleSwitcher onNavigate={onClose} />
+
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">
         <nav className="space-y-1 px-2">
           {filteredItems.map((item) => {
-            const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+            const isActive =
+              location.pathname === item.href || location.pathname.startsWith(item.href + '/');
             return (
               <Link
                 key={item.href}

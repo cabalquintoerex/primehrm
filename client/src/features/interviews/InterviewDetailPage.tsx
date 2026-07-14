@@ -135,7 +135,7 @@ export function InterviewDetailPage() {
   if (!interview) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" onClick={() => navigate('/admin/interviews')}>
+        <Button variant="ghost" onClick={() => navigate('/rsp/interviews')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Interviews
         </Button>
         <p className="text-muted-foreground">Interview schedule not found.</p>
@@ -150,7 +150,7 @@ export function InterviewDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/interviews')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/rsp/interviews')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -245,7 +245,7 @@ export function InterviewDetailPage() {
               <p className="text-sm font-semibold text-gray-900">Interview Completed</p>
               <p className="text-xs text-muted-foreground">Proceed to encode assessment scores for the applicants.</p>
             </div>
-            <Link to={`/admin/assessments/${interview.positionId}`}>
+            <Link to={`/rsp/assessments/${interview.positionId}`}>
               <Button className="bg-emerald-600 hover:bg-emerald-700">
                 <ClipboardCheck className="mr-2 h-4 w-4" />
                 Encode Assessment Scores

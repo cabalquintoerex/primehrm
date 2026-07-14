@@ -304,7 +304,7 @@ export function TrainingPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/admin/training/${training.id}`)}
+                        onClick={() => navigate(`/lnd/training/${training.id}`)}
                       >
                         <Eye className="mr-1.5 h-3.5 w-3.5" />
                         View
