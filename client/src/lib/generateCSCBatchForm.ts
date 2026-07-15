@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import type { CscPublicationBatch } from '@/types';
+import type { Publication } from '@/types';
 
 // === PAGE DIMENSIONS (landscape folio: 13 x 8.5 inches) ===
 const PW = 936; // 13 * 72
@@ -47,7 +47,7 @@ function wrapText(doc: jsPDF, text: string, maxWidth: number): string[] {
   return doc.splitTextToSize(text, maxWidth);
 }
 
-export function generateCSCBatchForm(batch: CscPublicationBatch): void {
+export function generateCSCBatchForm(batch: Publication): void {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [612, 936] });
   const positions = (batch.positions || []).filter(p => p.status !== 'DRAFT');
   const lguName = batch.lgu?.name || 'LGU';
@@ -399,5 +399,5 @@ export function generateCSCBatchForm(batch: CscPublicationBatch): void {
   doc.text('APPLICATIONS WITH INCOMPLETE DOCUMENTS SHALL NOT BE ENTERTAINED.', ML, dataY);
 
   // Save
-  doc.save(`CSC_Form9_Batch_${batch.batchNumber}.pdf`);
+  doc.save(`CSC_Form9_${batch.publicationNumber}.pdf`);
 }

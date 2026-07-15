@@ -8,7 +8,7 @@ sidebar swaps modules without re-logging.
 
 | Section | Base path | Pages | Who can enter |
 |---------|-----------|-------|---------------|
-| **RSP** — Recruitment, Selection & Placement | `/rsp` | Dashboard, CSC Batches, Positions, Applications, Interviews, Selection, Appointments, Reports | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
+| **RSP** — Recruitment, Selection & Placement | `/rsp` | Dashboard, Positions, Publications, Applications, Interviews, Selection, Appointments, Reports | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
 | **L&D** — Learning & Development | `/lnd` | Dashboard, Training, Reports | SUPER_ADMIN, LGU_HR_ADMIN |
 | **Administration** | `/admin` | Dashboard (super admin), LGU Management, Departments, Users, Audit Logs | SUPER_ADMIN, LGU_HR_ADMIN |
 | Applicant portal | `/applicant` | Dashboard, PDS, My Applications | APPLICANT |
@@ -35,53 +35,55 @@ Notes:
 
 ---
 
-### Step 1: Create CSC Publication Batch
-**Actor:** LGU HR Admin
-**Module:** CSC Batches (`/rsp/csc-batches`)
-
-1. HR Admin clicks "New Batch"
-2. Fills in:
-   - **Batch Number** (e.g., `2026-001`) — unique per LGU
-   - **Posting Date** — the date positions will be publicly posted
-   - **Closing Date** — auto-calculated (Posting Date + 15 calendar days)
-   - **Description** (optional)
-3. System creates the batch with status **Unpublished**
-4. HR Admin can edit or delete the batch while it is unpublished
-
----
-
-### Step 2: Create Positions and Assign to Batch
+### Step 1: Define Positions in the Catalog
 **Actor:** LGU HR Admin
 **Module:** Positions (`/rsp/positions`)
 
 1. HR Admin clicks "Add Position"
-2. Fills in position details:
+2. Fills in the reusable definition:
    - **Position Title**, **Plantilla Item No.**, **Salary Grade** (auto-fills monthly salary)
-   - **Place of Assignment**, **Office/Department**, **No. of Vacancies**
-   - **CSC Publication Batch** (required) — selecting a batch auto-fills Posting Date and Closing Date
+   - **Place of Assignment**, **Office/Department**
    - **Qualification Standards**: Education, Training, Experience, Eligibility, Competency
    - **Description / Instructions / Remarks**
    - **Document Requirements** (7 defaults pre-populated, customizable)
-3. Position is created with status **DRAFT**
-4. Position is linked to the selected CSC batch
+3. The position is saved to the **master catalog** — a reusable definition with **no status or
+   vacancy count of its own**. It is not yet posted anywhere.
 
-> **Alternative:** Positions can also be added to a batch from the Batch Detail page (`/rsp/csc-batches/:id`) using the "Add Positions" button.
+> The catalog is reusable: the same definition can be added to many publications over time. There is
+> no re-encoding — Step 3 pulls positions straight from this catalog.
 
 ---
 
-### Step 3: Publish the CSC Batch
+### Step 2: Create a Publication
 **Actor:** LGU HR Admin
-**Module:** CSC Batch Detail Page (`/rsp/csc-batches/:id`)
+**Module:** Publications (`/rsp/publications`)
 
-1. After CSC publishes the positions on their official website, HR Admin clicks "Mark as Published"
-2. System automatically:
-   - Sets the batch to **Published**
-   - Changes all **DRAFT** positions in the batch to **OPEN** status
-   - Positions now appear on the public careers page (`/:lgu-slug/careers`)
-3. If needed, HR Admin can **Unpublish** the batch:
-   - All **OPEN** positions in the batch revert to **DRAFT**
-   - Positions disappear from the public careers page
-   - Positions already CLOSED or FILLED are not affected
+1. HR Admin clicks "New Publication"
+2. Fills in:
+   - **Publication Number** (e.g., `2026-001`) — unique per LGU
+   - **Posting Date** — the date positions will be publicly posted
+   - **Closing Date** — auto-calculated (Posting Date + 15 calendar days)
+   - **Description** (optional)
+3. System creates the publication with status **Unpublished**
+4. HR Admin can edit or delete the publication while it is unpublished
+
+---
+
+### Step 3: Add Positions and Publish
+**Actor:** LGU HR Admin
+**Module:** Publication Detail Page (`/rsp/publications/:id`)
+
+1. HR Admin clicks **"Add Positions"** and selects positions from the catalog, setting the
+   **number of vacancies** for each.
+2. Each selection is **snapshotted** into the publication as a **DRAFT** posting — its definition and
+   document requirements are copied and frozen at that moment (later catalog edits don't touch it).
+3. After CSC publishes the positions on their official website, HR Admin clicks "Mark as Published":
+   - Sets the publication to **Published**
+   - Changes all **DRAFT** postings in it to **OPEN** status
+   - OPEN positions now appear on the public careers page (`/:lgu-slug/careers`)
+4. Each posting can also be individually **Published / Unpublished / Closed / Marked Filled** from this
+   page. If the publication is **Unpublished**, all its **OPEN** postings revert to **DRAFT**
+   (CLOSED/FILLED are unaffected).
 
 ---
 
@@ -235,10 +237,10 @@ Notes:
 ```
 DRAFT → OPEN → CLOSED → FILLED
          ↑
-    (CSC Batch Publish)
+   (Publication Publish)
 ```
-- **DRAFT**: Created, not yet publicly visible
-- **OPEN**: Published via CSC batch, visible on careers page, accepting applications
+- **DRAFT**: Snapshotted into a publication, not yet publicly visible
+- **OPEN**: Published within its publication, visible on careers page, accepting applications
 - **CLOSED**: No longer accepting applications
 - **FILLED**: All vacancy slots appointed
 
@@ -248,7 +250,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
                                                                                             ↘ REJECTED (at any step)
 ```
 
-### CSC Batch Status Flow
+### Publication Status Flow
 ```
 Unpublished → Published → Unpublished (reversible)
 ```
@@ -274,9 +276,9 @@ PENDING → COMPLETED (auto, when all requirements verified)
 | Manage LGUs | Yes | - | - | - |
 | Manage Departments | Yes | Yes | - | - |
 | Manage Users | Yes | Yes | - | - |
-| Manage CSC Batches | View Only | Yes | - | - |
-| Create/Edit Positions | View Only | Yes | - | - |
-| Publish/Unpublish Batch | View Only | Yes | - | - |
+| Manage Publications | View Only | Yes | - | - |
+| Create/Edit Positions (catalog) | View Only | Yes | - | - |
+| Publish/Unpublish Publication | View Only | Yes | - | - |
 | View Applications | View Only | Yes | Own Dept | Own |
 | Endorse to Office | - | Yes | - | - |
 | Shortlist / Reject | - | - | Yes | - |

@@ -8,25 +8,26 @@ datasource db {
 }
 
 model Lgu {
-  id        Int      @id @default(autoincrement())
-  name      String
-  slug      String   @unique
-  logo      String?
-  headerBg  String?  @map("header_bg")
-  address   String?
-  contactNumber String?  @map("contact_number")
-  email     String?
-  isActive  Boolean  @default(true) @map("is_active")
+  id             Int      @id @default(autoincrement())
+  name           String
+  slug           String   @unique
+  logo           String?
+  headerBg       String?  @map("header_bg")
+  address        String?
+  contactNumber  String?  @map("contact_number")
+  email          String?
+  isActive       Boolean  @default(true) @map("is_active")
   // Licensed business modules, e.g. ["RSP", "LND"]. Null = all modules available.
-  enabledModules Json? @map("enabled_modules")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  enabledModules Json?    @map("enabled_modules")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  users       User[]
-  departments Department[]
-  positions   Position[]
-  trainings   Training[]
-  cscBatches  CscPublicationBatch[]
+  users           User[]
+  departments     Department[]
+  positions       Position[]
+  positionCatalog PositionCatalog[]
+  trainings       Training[]
+  publications    Publication[]
 
   @@map("lgus")
 }
@@ -39,34 +40,34 @@ enum UserRole {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  firstName String   @map("first_name")
-  lastName  String   @map("last_name")
-  role      UserRole @default(APPLICANT)
-  isActive  Boolean  @default(true) @map("is_active")
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  username     String   @unique
+  password     String
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  role         UserRole @default(APPLICANT)
+  isActive     Boolean  @default(true) @map("is_active")
   // Per-user module grants, e.g. ["RSP","ADMIN"]. Null = no modules (deny-by-default).
   // Only governs LGU staff; SUPER_ADMIN and APPLICANT ignore it.
-  moduleAccess Json? @map("module_access")
-  lguId     Int?     @map("lgu_id")
-  departmentId Int?  @map("department_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  moduleAccess Json?    @map("module_access")
+  lguId        Int?     @map("lgu_id")
+  departmentId Int?     @map("department_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  lgu        Lgu?        @relation(fields: [lguId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
-  auditLogs  AuditLog[]
-  applications       Application[]
-  personalDataSheet  PersonalDataSheet?
-  workExperienceSheet WorkExperienceSheet?
-  interviewsCreated  InterviewSchedule[] @relation("InterviewCreator")
-  assessmentsScored  AssessmentScore[]   @relation("AssessmentScorer")
-  appointmentsCreated Appointment[]      @relation("AppointmentCreator")
-  requirementsVerified FinalRequirement[] @relation("RequirementVerifier")
-  trainingsCreated     Training[]              @relation("TrainingCreator")
-  cscBatchesCreated    CscPublicationBatch[]   @relation("CscBatchCreator")
+  lgu                  Lgu?                 @relation(fields: [lguId], references: [id])
+  department           Department?          @relation(fields: [departmentId], references: [id])
+  auditLogs            AuditLog[]
+  applications         Application[]
+  personalDataSheet    PersonalDataSheet?
+  workExperienceSheet  WorkExperienceSheet?
+  interviewsCreated    InterviewSchedule[]  @relation("InterviewCreator")
+  assessmentsScored    AssessmentScore[]    @relation("AssessmentScorer")
+  appointmentsCreated  Appointment[]        @relation("AppointmentCreator")
+  requirementsVerified FinalRequirement[]   @relation("RequirementVerifier")
+  trainingsCreated     Training[]           @relation("TrainingCreator")
+  publicationsCreated  Publication[]        @relation("PublicationCreator")
 
   @@map("users")
 }
@@ -80,50 +81,98 @@ model Department {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  lgu       Lgu        @relation(fields: [lguId], references: [id])
-  users     User[]
-  positions Position[]
+  lgu             Lgu               @relation(fields: [lguId], references: [id])
+  users           User[]
+  positions       Position[]
+  positionCatalog PositionCatalog[]
 
   @@unique([lguId, name])
   @@map("departments")
 }
 
 model Position {
-  id          Int      @id @default(autoincrement())
-  title       String
-  itemNumber  String?  @map("item_number")
-  salaryGrade Int?     @map("salary_grade")
-  monthlySalary Decimal? @map("monthly_salary") @db.Decimal(12, 2)
-  education   String?  @db.Text
-  training    String?  @db.Text
-  experience  String?  @db.Text
-  eligibility String?  @db.Text
-  competency  String?  @db.Text
-  placeOfAssignment String? @map("place_of_assignment")
-  description String?  @db.Text
-  requirements Json?
-  status      PositionStatus @default(DRAFT)
-  openDate    DateTime? @map("open_date")
-  closeDate   DateTime? @map("close_date")
-  slots       Int      @default(1)
-  lguId       Int      @map("lgu_id")
-  departmentId Int?    @map("department_id")
-  createdBy   Int?     @map("created_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                Int            @id @default(autoincrement())
+  title             String
+  itemNumber        String?        @map("item_number")
+  salaryGrade       Int?           @map("salary_grade")
+  monthlySalary     Decimal?       @map("monthly_salary") @db.Decimal(12, 2)
+  education         String?        @db.Text
+  training          String?        @db.Text
+  experience        String?        @db.Text
+  eligibility       String?        @db.Text
+  competency        String?        @db.Text
+  placeOfAssignment String?        @map("place_of_assignment")
+  description       String?        @db.Text
+  requirements      Json?
+  status            PositionStatus @default(DRAFT)
+  openDate          DateTime?      @map("open_date")
+  closeDate         DateTime?      @map("close_date")
+  slots             Int            @default(1)
+  lguId             Int            @map("lgu_id")
+  departmentId      Int?           @map("department_id")
+  createdBy         Int?           @map("created_by")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
-  cscBatchId  Int?       @map("csc_batch_id")
+  publicationId Int? @map("publication_id")
+  catalogId     Int? @map("catalog_id")
 
-  lgu        Lgu         @relation(fields: [lguId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
-  cscBatch   CscPublicationBatch? @relation(fields: [cscBatchId], references: [id], onDelete: SetNull)
+  lgu                  Lgu                           @relation(fields: [lguId], references: [id])
+  department           Department?                   @relation(fields: [departmentId], references: [id])
+  publication          Publication?                  @relation(fields: [publicationId], references: [id], onDelete: SetNull)
+  catalog              PositionCatalog?              @relation(fields: [catalogId], references: [id], onDelete: SetNull)
   documentRequirements PositionDocumentRequirement[]
-  applications Application[]
-  interviewSchedules InterviewSchedule[]
-  assessmentScores   AssessmentScore[]
-  appointments       Appointment[]
+  applications         Application[]
+  interviewSchedules   InterviewSchedule[]
+  assessmentScores     AssessmentScore[]
+  appointments         Appointment[]
 
   @@map("positions")
+}
+
+// Master catalog of position definitions (the "Positions" module). Reusable across many
+// publications; snapshotted into a Position instance when added to a publication.
+model PositionCatalog {
+  id                Int      @id @default(autoincrement())
+  title             String
+  itemNumber        String?  @map("item_number")
+  salaryGrade       Int?     @map("salary_grade")
+  monthlySalary     Decimal? @map("monthly_salary") @db.Decimal(12, 2)
+  education         String?  @db.Text
+  training          String?  @db.Text
+  experience        String?  @db.Text
+  eligibility       String?  @db.Text
+  competency        String?  @db.Text
+  placeOfAssignment String?  @map("place_of_assignment")
+  description       String?  @db.Text
+  isActive          Boolean  @default(true) @map("is_active")
+  lguId             Int      @map("lgu_id")
+  departmentId      Int?     @map("department_id")
+  createdBy         Int?     @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  lgu                  Lgu                          @relation(fields: [lguId], references: [id])
+  department           Department?                  @relation(fields: [departmentId], references: [id])
+  documentRequirements PositionCatalogRequirement[]
+  positions            Position[]
+
+  @@map("position_catalog")
+}
+
+// Document-requirement template on a catalog position; copied to the instance on add.
+model PositionCatalogRequirement {
+  id          Int      @id @default(autoincrement())
+  catalogId   Int      @map("catalog_id")
+  label       String
+  description String?  @db.Text
+  isRequired  Boolean  @default(true) @map("is_required")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  catalog PositionCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+
+  @@map("position_catalog_requirements")
 }
 
 enum PositionStatus {
@@ -161,7 +210,7 @@ model PositionDocumentRequirement {
   sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  position    Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  position             Position              @relation(fields: [positionId], references: [id], onDelete: Cascade)
   applicationDocuments ApplicationDocument[]
 
   @@map("position_document_requirements")
@@ -182,18 +231,18 @@ enum ApplicationStatus {
 }
 
 model Application {
-  id           Int      @id @default(autoincrement())
-  positionId   Int      @map("position_id")
-  applicantId  Int      @map("applicant_id")
-  status       ApplicationStatus @default(SUBMITTED)
-  submittedAt  DateTime @default(now()) @map("submitted_at")
-  notes        String?  @db.Text
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id          Int               @id @default(autoincrement())
+  positionId  Int               @map("position_id")
+  applicantId Int               @map("applicant_id")
+  status      ApplicationStatus @default(SUBMITTED)
+  submittedAt DateTime          @default(now()) @map("submitted_at")
+  notes       String?           @db.Text
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
 
-  position     Position @relation(fields: [positionId], references: [id])
-  applicant    User     @relation(fields: [applicantId], references: [id])
-  documents    ApplicationDocument[]
+  position             Position                     @relation(fields: [positionId], references: [id])
+  applicant            User                         @relation(fields: [applicantId], references: [id])
+  documents            ApplicationDocument[]
   interviewAssignments InterviewScheduleApplicant[]
   assessmentScore      AssessmentScore?
   appointment          Appointment?
@@ -210,7 +259,7 @@ model PersonalDataSheet {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user      User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("personal_data_sheets")
 }
@@ -223,23 +272,23 @@ model WorkExperienceSheet {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user      User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("work_experience_sheets")
 }
 
 model ApplicationDocument {
-  id             Int      @id @default(autoincrement())
-  applicationId  Int      @map("application_id")
-  requirementId  Int      @map("requirement_id")
-  fileName       String   @map("file_name")
-  filePath       String   @map("file_path")
-  fileSize       Int      @map("file_size")
-  mimeType       String   @map("mime_type")
-  uploadedAt     DateTime @default(now()) @map("uploaded_at")
+  id            Int      @id @default(autoincrement())
+  applicationId Int      @map("application_id")
+  requirementId Int      @map("requirement_id")
+  fileName      String   @map("file_name")
+  filePath      String   @map("file_path")
+  fileSize      Int      @map("file_size")
+  mimeType      String   @map("mime_type")
+  uploadedAt    DateTime @default(now()) @map("uploaded_at")
 
-  application    Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  requirement    PositionDocumentRequirement @relation(fields: [requirementId], references: [id])
+  application Application                 @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  requirement PositionDocumentRequirement @relation(fields: [requirementId], references: [id])
 
   @@map("application_documents")
 }
@@ -251,19 +300,19 @@ enum InterviewStatus {
 }
 
 model InterviewSchedule {
-  id           Int      @id @default(autoincrement())
-  positionId   Int      @map("position_id")
-  scheduleDate DateTime @map("schedule_date")
+  id           Int             @id @default(autoincrement())
+  positionId   Int             @map("position_id")
+  scheduleDate DateTime        @map("schedule_date")
   venue        String?
-  notes        String?  @db.Text
+  notes        String?         @db.Text
   status       InterviewStatus @default(SCHEDULED)
-  createdBy    Int      @map("created_by")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdBy    Int             @map("created_by")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
 
-  position     Position @relation(fields: [positionId], references: [id])
-  creator      User     @relation("InterviewCreator", fields: [createdBy], references: [id])
-  applicants   InterviewScheduleApplicant[]
+  position   Position                     @relation(fields: [positionId], references: [id])
+  creator    User                         @relation("InterviewCreator", fields: [createdBy], references: [id])
+  applicants InterviewScheduleApplicant[]
 
   @@map("interview_schedules")
 }
@@ -276,33 +325,33 @@ model InterviewScheduleApplicant {
   attended            Boolean?
   createdAt           DateTime @default(now()) @map("created_at")
 
-  interviewSchedule   InterviewSchedule @relation(fields: [interviewScheduleId], references: [id], onDelete: Cascade)
-  application         Application       @relation(fields: [applicationId], references: [id])
+  interviewSchedule InterviewSchedule @relation(fields: [interviewScheduleId], references: [id], onDelete: Cascade)
+  application       Application       @relation(fields: [applicationId], references: [id])
 
   @@unique([interviewScheduleId, applicationId])
   @@map("interview_schedule_applicants")
 }
 
 model AssessmentScore {
-  id               Int      @id @default(autoincrement())
-  applicationId    Int      @unique @map("application_id")
-  positionId       Int      @map("position_id")
-  educationScore   Decimal? @map("education_score") @db.Decimal(5, 2)
-  trainingScore    Decimal? @map("training_score") @db.Decimal(5, 2)
-  experienceScore  Decimal? @map("experience_score") @db.Decimal(5, 2)
-  performanceScore Decimal? @map("performance_score") @db.Decimal(5, 2)
+  id                Int      @id @default(autoincrement())
+  applicationId     Int      @unique @map("application_id")
+  positionId        Int      @map("position_id")
+  educationScore    Decimal? @map("education_score") @db.Decimal(5, 2)
+  trainingScore     Decimal? @map("training_score") @db.Decimal(5, 2)
+  experienceScore   Decimal? @map("experience_score") @db.Decimal(5, 2)
+  performanceScore  Decimal? @map("performance_score") @db.Decimal(5, 2)
   psychosocialScore Decimal? @map("psychosocial_score") @db.Decimal(5, 2)
-  potentialScore   Decimal? @map("potential_score") @db.Decimal(5, 2)
-  interviewScore   Decimal? @map("interview_score") @db.Decimal(5, 2)
-  totalScore       Decimal? @map("total_score") @db.Decimal(5, 2)
-  remarks          String?  @db.Text
-  scoredBy         Int      @map("scored_by")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  potentialScore    Decimal? @map("potential_score") @db.Decimal(5, 2)
+  interviewScore    Decimal? @map("interview_score") @db.Decimal(5, 2)
+  totalScore        Decimal? @map("total_score") @db.Decimal(5, 2)
+  remarks           String?  @db.Text
+  scoredBy          Int      @map("scored_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  application      Application @relation(fields: [applicationId], references: [id])
-  position         Position    @relation(fields: [positionId], references: [id])
-  scorer           User        @relation("AssessmentScorer", fields: [scoredBy], references: [id])
+  application Application @relation(fields: [applicationId], references: [id])
+  position    Position    @relation(fields: [positionId], references: [id])
+  scorer      User        @relation("AssessmentScorer", fields: [scoredBy], references: [id])
 
   @@unique([applicationId, positionId])
   @@map("assessment_scores")
@@ -314,39 +363,39 @@ enum AppointmentStatus {
 }
 
 model Appointment {
-  id              Int      @id @default(autoincrement())
-  applicationId   Int      @unique @map("application_id")
-  positionId      Int      @map("position_id")
-  appointmentDate DateTime @map("appointment_date")
-  oathDate        DateTime? @map("oath_date")
+  id              Int               @id @default(autoincrement())
+  applicationId   Int               @unique @map("application_id")
+  positionId      Int               @map("position_id")
+  appointmentDate DateTime          @map("appointment_date")
+  oathDate        DateTime?         @map("oath_date")
   status          AppointmentStatus @default(PENDING)
-  createdBy       Int      @map("created_by")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdBy       Int               @map("created_by")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  application     Application @relation(fields: [applicationId], references: [id])
-  position        Position    @relation(fields: [positionId], references: [id])
-  creator         User        @relation("AppointmentCreator", fields: [createdBy], references: [id])
+  application       Application        @relation(fields: [applicationId], references: [id])
+  position          Position           @relation(fields: [positionId], references: [id])
+  creator           User               @relation("AppointmentCreator", fields: [createdBy], references: [id])
   finalRequirements FinalRequirement[]
 
   @@map("appointments")
 }
 
 model FinalRequirement {
-  id              Int      @id @default(autoincrement())
-  appointmentId   Int      @map("appointment_id")
-  requirementName String   @map("requirement_name")
-  description     String?  @db.Text
-  isSubmitted     Boolean  @default(false) @map("is_submitted")
-  isVerified      Boolean  @default(false) @map("is_verified")
-  verifiedBy      Int?     @map("verified_by")
+  id              Int       @id @default(autoincrement())
+  appointmentId   Int       @map("appointment_id")
+  requirementName String    @map("requirement_name")
+  description     String?   @db.Text
+  isSubmitted     Boolean   @default(false) @map("is_submitted")
+  isVerified      Boolean   @default(false) @map("is_verified")
+  verifiedBy      Int?      @map("verified_by")
   verifiedAt      DateTime? @map("verified_at")
-  filePath        String?  @map("file_path")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  filePath        String?   @map("file_path")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  verifier        User?       @relation("RequirementVerifier", fields: [verifiedBy], references: [id])
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  verifier    User?       @relation("RequirementVerifier", fields: [verifiedBy], references: [id])
 
   @@map("final_requirements")
 }
@@ -366,24 +415,24 @@ enum TrainingStatus {
 }
 
 model Training {
-  id             Int            @id @default(autoincrement())
-  title          String
-  description    String?        @db.Text
-  type           TrainingType
-  venue          String?
-  conductedBy    String?        @map("conducted_by")
-  startDate      DateTime       @map("start_date")
-  endDate        DateTime       @map("end_date")
-  numberOfHours  Decimal?       @map("number_of_hours") @db.Decimal(6, 2)
-  status         TrainingStatus @default(UPCOMING)
-  lguId          Int            @map("lgu_id")
-  createdBy      Int            @map("created_by")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  id            Int            @id @default(autoincrement())
+  title         String
+  description   String?        @db.Text
+  type          TrainingType
+  venue         String?
+  conductedBy   String?        @map("conducted_by")
+  startDate     DateTime       @map("start_date")
+  endDate       DateTime       @map("end_date")
+  numberOfHours Decimal?       @map("number_of_hours") @db.Decimal(6, 2)
+  status        TrainingStatus @default(UPCOMING)
+  lguId         Int            @map("lgu_id")
+  createdBy     Int            @map("created_by")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
 
-  lgu            Lgu            @relation(fields: [lguId], references: [id])
-  creator        User           @relation("TrainingCreator", fields: [createdBy], references: [id])
-  participants   TrainingParticipant[]
+  lgu          Lgu                   @relation(fields: [lguId], references: [id])
+  creator      User                  @relation("TrainingCreator", fields: [createdBy], references: [id])
+  participants TrainingParticipant[]
 
   @@map("trainings")
 }
@@ -400,28 +449,28 @@ model TrainingParticipant {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  training    Training  @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  training Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
 
   @@map("training_participants")
 }
 
-model CscPublicationBatch {
-  id          Int       @id @default(autoincrement())
-  batchNumber String    @map("batch_number")
-  description String?   @db.Text
-  openDate    DateTime  @map("open_date")
-  closeDate   DateTime  @map("close_date")
-  isPublished Boolean   @default(false) @map("is_published")
-  publishedAt DateTime? @map("published_at")
-  lguId       Int       @map("lgu_id")
-  createdBy   Int       @map("created_by")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+model Publication {
+  id                Int       @id @default(autoincrement())
+  publicationNumber String    @map("publication_number")
+  description       String?   @db.Text
+  openDate          DateTime  @map("open_date")
+  closeDate         DateTime  @map("close_date")
+  isPublished       Boolean   @default(false) @map("is_published")
+  publishedAt       DateTime? @map("published_at")
+  lguId             Int       @map("lgu_id")
+  createdBy         Int       @map("created_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  lgu         Lgu       @relation(fields: [lguId], references: [id])
-  creator     User      @relation("CscBatchCreator", fields: [createdBy], references: [id])
-  positions   Position[]
+  lgu       Lgu        @relation(fields: [lguId], references: [id])
+  creator   User       @relation("PublicationCreator", fields: [createdBy], references: [id])
+  positions Position[]
 
-  @@unique([lguId, batchNumber])
-  @@map("csc_publication_batches")
+  @@unique([lguId, publicationNumber])
+  @@map("publications")
 }

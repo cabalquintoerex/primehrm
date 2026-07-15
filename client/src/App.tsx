@@ -34,8 +34,8 @@ const AppointmentsPage = lazy(() => import('@/features/appointments/Appointments
 const AppointmentDetailPage = lazy(() => import('@/features/appointments/AppointmentDetailPage').then(m => ({ default: m.AppointmentDetailPage })));
 const TrainingPage = lazy(() => import('@/features/training/TrainingPage').then(m => ({ default: m.TrainingPage })));
 const TrainingDetailPage = lazy(() => import('@/features/training/TrainingDetailPage').then(m => ({ default: m.TrainingDetailPage })));
-const CscBatchPage = lazy(() => import('@/features/csc-batches/CscBatchPage').then(m => ({ default: m.CscBatchPage })));
-const CscBatchDetailPage = lazy(() => import('@/features/csc-batches/CscBatchDetailPage').then(m => ({ default: m.CscBatchDetailPage })));
+const PublicationPage = lazy(() => import('@/features/publications/PublicationPage').then(m => ({ default: m.PublicationPage })));
+const PublicationDetailPage = lazy(() => import('@/features/publications/PublicationDetailPage').then(m => ({ default: m.PublicationDetailPage })));
 const ProfilePage = lazy(() => import('@/features/profile/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const ProcessFlowPage = lazy(() => import('@/features/process-flow/ProcessFlowPage').then(m => ({ default: m.ProcessFlowPage })));
 const RspReportsPage = lazy(() => import('@/features/reports/RspReportsPage').then(m => ({ default: m.RspReportsPage })));
@@ -151,16 +151,16 @@ function App() {
               <Route path="profile" element={<ProfilePage />} />
               <Route path="process-flow" element={<ProcessFlowPage />} />
               <Route
-                path="csc-batches"
-                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><CscBatchPage /></ProtectedRoute>}
-              />
-              <Route
-                path="csc-batches/:id"
-                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><CscBatchDetailPage /></ProtectedRoute>}
-              />
-              <Route
                 path="positions"
                 element={<ProtectedRoute allowedRoles={RSP_ADMINS}><PositionPage /></ProtectedRoute>}
+              />
+              <Route
+                path="publications"
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><PublicationPage /></ProtectedRoute>}
+              />
+              <Route
+                path="publications/:id"
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><PublicationDetailPage /></ProtectedRoute>}
               />
               <Route
                 path="applications"
@@ -261,7 +261,8 @@ function App() {
 
             {/* Legacy paths from before the RSP / L&D module split */}
             <Route path="/admin/dashboard/*" element={<LegacyRedirect to="/rsp/dashboard" />} />
-            <Route path="/admin/csc-batches/*" element={<LegacyRedirect to="/rsp/csc-batches" />} />
+            <Route path="/admin/csc-batches/*" element={<LegacyRedirect to="/rsp/publications" />} />
+            <Route path="/rsp/csc-batches/*" element={<LegacyRedirect to="/rsp/publications" />} />
             <Route path="/admin/positions/*" element={<LegacyRedirect to="/rsp/positions" />} />
             <Route path="/admin/applications/*" element={<LegacyRedirect to="/rsp/applications" />} />
             <Route path="/admin/interviews/*" element={<LegacyRedirect to="/rsp/interviews" />} />

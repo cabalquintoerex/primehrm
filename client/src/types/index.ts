@@ -80,14 +80,51 @@ export interface Position {
   createdBy: number | null;
   createdAt: string;
   updatedAt: string;
-  cscBatchId?: number | null;
+  publicationId?: number | null;
+  catalogId?: number | null;
   department?: Pick<Department, 'id' | 'name'> | null;
-  cscBatch?: Pick<CscPublicationBatch, 'id' | 'batchNumber' | 'isPublished'> | null;
+  publication?: Pick<Publication, 'id' | 'publicationNumber' | 'isPublished'> | null;
+  _count?: { applications: number };
 }
 
-export interface CscPublicationBatch {
+/** A reusable master position definition (the "Positions" module). No status/slots/publication. */
+export interface PositionCatalog {
   id: number;
-  batchNumber: string;
+  title: string;
+  itemNumber: string | null;
+  salaryGrade: number | null;
+  monthlySalary: number | string | null;
+  education: string | null;
+  training: string | null;
+  experience: string | null;
+  eligibility: string | null;
+  competency: string | null;
+  placeOfAssignment: string | null;
+  description: string | null;
+  isActive: boolean;
+  lguId: number;
+  departmentId: number | null;
+  createdBy: number | null;
+  createdAt: string;
+  updatedAt: string;
+  department?: Pick<Department, 'id' | 'name'> | null;
+  lgu?: Pick<Lgu, 'id' | 'name' | 'slug'> | null;
+  documentRequirements?: PositionCatalogRequirement[];
+  _count?: { positions: number; documentRequirements: number };
+}
+
+export interface PositionCatalogRequirement {
+  id: number;
+  catalogId: number;
+  label: string;
+  description: string | null;
+  isRequired: boolean;
+  sortOrder: number;
+}
+
+export interface Publication {
+  id: number;
+  publicationNumber: string;
   description: string | null;
   openDate: string;
   closeDate: string;

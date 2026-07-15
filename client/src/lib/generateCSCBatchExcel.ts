@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import type { CscPublicationBatch } from '@/types';
+import type { Publication } from '@/types';
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '';
@@ -23,7 +23,7 @@ const thinBorder: Partial<ExcelJS.Borders> = {
   right: { style: 'thin' },
 };
 
-export async function generateCSCBatchExcel(batch: CscPublicationBatch): Promise<void> {
+export async function generateCSCBatchExcel(batch: Publication): Promise<void> {
   const positions = (batch.positions || []).filter(p => p.status !== 'DRAFT');
   const lguName = batch.lgu?.name || 'LGU';
   const lguAddress = batch.lgu?.address || '';
@@ -346,5 +346,5 @@ export async function generateCSCBatchExcel(batch: CscPublicationBatch): Promise
   // Generate and save
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  saveAs(blob, `CSC_Form9_Batch_${batch.batchNumber}.xlsx`);
+  saveAs(blob, `CSC_Form9_${batch.publicationNumber}.xlsx`);
 }

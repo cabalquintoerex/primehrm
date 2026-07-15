@@ -564,7 +564,7 @@ modules plus a system section, with a post-login launcher and a sidebar switcher
 ### Route Namespaces
 | Section | Base | Pages | Who can enter |
 |---------|------|-------|---------------|
-| RSP | `/rsp` | Dashboard, CSC Batches, Positions, Applications, Interviews, Selection, Appointments, Reports | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
+| RSP | `/rsp` | Dashboard, Positions, Publications, Applications, Interviews, Selection, Appointments, Reports | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
 | L&D | `/lnd` | Dashboard, Training, Reports | SUPER_ADMIN, LGU_HR_ADMIN |
 | Administration | `/admin` | Dashboard (super admin), LGU Management, Departments, Users, Audit Logs | SUPER_ADMIN, LGU_HR_ADMIN |
 | Applicant portal | `/applicant` | Dashboard, PDS, My Applications | APPLICANT |
@@ -691,6 +691,98 @@ LGU licensing (super admin)   — which modules the LGU bought        (null = al
 Server enforcement: L&D via `requireModule('LND')` (training, L&D dashboard/reports); Administration
 via `requireModule('ADMIN')` (users, audit-logs). RSP stays client-enforced (core module; its routes
 mix in public/applicant endpoints).
+
+---
+
+## RSP — Reuse Previous Position (SUPERSEDED by Phase 10)
+
+> **Superseded.** The inline title-autocomplete reuse feature and the `GET /positions/templates`
+> endpoint were removed in **Phase 10**. The Positions **catalog** is now itself the reusable list:
+> a position is defined once in the catalog and added to any number of publications. `positionTemplates.ts`
+> and the `/templates` route no longer exist. The section below is kept for history only.
+
+When creating a position, HR can pre-fill the whole form from a position the LGU has posted
+before, instead of re-encoding the same plantilla item each publication batch.
+
+- [x] Server: `GET /positions/templates` — distinct prior positions for the LGU, deduped by
+  `title + itemNumber` (most recent kept), with all fields, qualification standards, document
+  requirements, and the last batch number. LGU-scoped; route registered **before** `/:id`
+- [x] Client: **inline autocomplete on the Position Title field** (create only) — as HR types or
+  focuses the title, matching prior positions drop down under it (`positionTemplates.ts` holds the
+  type + `usePositionTemplates` hook). No separate box/button — kept subtle per design feedback
+- [x] Selecting a suggestion pre-fills every field via `setValue` + `setDocRequirements` (+ toast)
+- [x] Copies **everything incl. the document-requirements list** (uses the form's existing
+  second `POST /positions/:id/requirements` call — no change to `createPosition` needed)
+- [x] CSC batch, posting date, and closing date intentionally NOT copied — they belong to the
+  new batch. Result is a fresh DRAFT position, no link to the source
+- [x] Verified live: Lapu-Lapu HR sees 13 distinct templates (each with 7 requirements);
+  Mandaue (no positions) sees 0 → picker hidden
+
+---
+
+## Phase 10: Positions Catalog & Publications Remodel — COMPLETED
+
+Restructured the RSP position model into a **master/instance (catalog + snapshot)** design and
+renamed "CSC Batches" to **Publications**. Motivation: the old model conflated the reusable position
+definition, its recruitment status, and its batch assignment on one `Position` row, which forced
+re-encoding and put status actions in the wrong place.
+
+### Conceptual model
+- **Positions** module = master **catalog** of reusable position definitions (qualification standards
+  + document-requirement template). No status, no slots, no publication link.
+- **Publications** module = create a publication, then **add positions from the catalog** into it.
+  Each add **snapshots** the catalog definition (and its document requirements) into a `Position`
+  **instance** that carries status/slots/dates and owns the applicant pipeline. Published records are
+  therefore frozen even if the catalog master later changes.
+- The same catalog position can be added to many publications over time (true reuse).
+
+### Database
+- [x] New `PositionCatalog` model (`position_catalog`) — master definition; `isActive`; relations to
+  Lgu/Department; `documentRequirements PositionCatalogRequirement[]`; `positions Position[]`
+- [x] New `PositionCatalogRequirement` model (`position_catalog_requirements`) — requirement template,
+  `onDelete: Cascade`
+- [x] Renamed `CscPublicationBatch` → `Publication` (`publications`); `batchNumber` → `publicationNumber`;
+  `@@unique([lguId, publicationNumber])`; relation `PublicationCreator`
+- [x] `Position` — dropped `cscBatchId`, added `publicationId` (→ Publication, SetNull) and `catalogId`
+  (→ PositionCatalog, SetNull). Still owns status/slots/dates + applications/interviews/assessments/appointments
+- [x] `db push` + `prisma generate` (dev workflow, no migration files)
+
+### Server
+- [x] New `positionCatalog.controller.ts` + `positionCatalog.routes.ts` — CRUD at `/api/position-catalog`;
+  create/update embed the document-requirement template; delete blocked while used in ≥1 publication
+- [x] Renamed `cscBatch.controller.ts`/`routes.ts` → `publication.controller.ts`/`routes.ts` at
+  `/api/publications`; `addPositionsToPublication` snapshots selected catalog entries into instances;
+  `removePositionFromPublication` deletes an instance (blocked if it has applications)
+- [x] `position.controller.ts` — positions are now instances only; removed `createPosition` and
+  `getPositionTemplates`; `updatePositionStatus` guards "publication must be published first"
+- [x] `public.controller.ts` — careers filter now `publication.isPublished`
+- [x] `app.ts` — mounts `/api/publications` and `/api/position-catalog`; `/api/csc-batches` removed
+
+### Client
+- [x] Positions page (`features/positions/PositionPage.tsx`) → **catalog CRUD** (no status/slots/
+  publication/dates; removed reuse autocomplete; added Active toggle + "Used in N publications" column)
+- [x] New `features/publications/` — `PublicationPage.tsx` (list/create/edit/delete) and
+  `PublicationDetailPage.tsx` (add-from-catalog with per-position slots; **per-instance Publish/
+  Unpublish/Close/Mark-Filled actions moved here from Positions**; publish/unpublish publication;
+  CS Form 9 PDF/Excel export retained)
+- [x] Sidebar: **Positions now before Publications**; "CSC Batches" renamed to "Publications"
+- [x] Routes `/rsp/positions`, `/rsp/publications`, `/rsp/publications/:id`; legacy `/rsp/csc-batches`
+  and `/admin/csc-batches` redirect to `/rsp/publications`
+- [x] Types: `Publication`, `PositionCatalog`, `PositionCatalogRequirement`; `Position` gains
+  `publicationId`/`catalogId`; removed `CscPublicationBatch`
+- [x] Deleted `positionTemplates.ts` and the old `features/csc-batches/` folder
+- [x] ProcessFlow page + `ProcessFlow.md` updated to the catalog → publication → snapshot flow
+
+### Concern #1 (cache) fixed
+The old "create a position, then refresh to see it in the batch" bug is gone by design: positions are
+added directly on the publication detail page, and every mutation there invalidates `['publication']`,
+`['publications']`, and `['position-catalog']`.
+
+### Seed
+- [x] `seed.ts` rewritten via a `makePosition()` helper that creates a catalog master + snapshotted
+  instance for each seeded position. Result: **18 catalog masters, 6 publications, 18 instances**
+  (all linked; 126 catalog + 126 instance document requirements). Verified live end-to-end (create
+  catalog → add to publication → publish auto-opens instances → status guard → remove/delete).
 
 ---
 

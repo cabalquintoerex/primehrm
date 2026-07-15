@@ -10,9 +10,14 @@ Quick reference for the seed data structure. Use this when adding new seed data 
 trainingParticipant → training → finalRequirement → appointment →
 assessmentScore → interviewScheduleApplicant → interviewSchedule →
 applicationDocument → application → personalDataSheet → workExperienceSheet →
-positionDocumentRequirement → position → cscPublicationBatch →
-auditLog → user → department → lgu
+positionDocumentRequirement → position → positionCatalogRequirement → positionCatalog →
+publication → auditLog → user → department → lgu
 ```
+
+> **Model note (Phase 10):** Each seeded position is created by the `makePosition()` helper, which
+> makes a **PositionCatalog** master (the reusable definition, the "Positions" module) **and** a
+> snapshotted **Position** instance inside a **Publication**. `cscBatchId` in the seed payloads is the
+> `publicationId`. Totals: 18 catalog masters, 6 publications, 18 instances.
 
 ---
 
@@ -68,22 +73,25 @@ All hashed with bcrypt (12 rounds).
 
 ## Cebu City Pipeline Data
 
-### CSC Publication Batches (2)
-| Variable | Batch | Published | Open Date | Close Date |
-|----------|-------|-----------|-----------|------------|
+### Publications (2)
+| Variable | Publication | Published | Open Date | Close Date |
+|----------|-------------|-----------|-----------|------------|
 | `batch1` | 2026-001 | Yes | 2026-01-15 | 2026-01-30 |
 | `batch2` | 2026-002 | No | 2026-03-01 | 2026-03-16 |
 
-### Positions (5)
-| Variable | Title | SG | Salary | Dept | Slots | Status | Batch |
-|----------|-------|----|--------|------|-------|--------|-------|
+> Variable names still read `batchN` in the seed source; they now hold `Publication` rows. Each
+> position below is a catalog master + a snapshotted instance placed in the given publication.
+
+### Positions (5 catalog masters → 5 instances)
+| Variable | Title | SG | Salary | Dept | Slots | Status | Publication |
+|----------|-------|----|--------|------|-------|--------|-------------|
 | `pos1` | Administrative Officer V | 18 | 51,357 | Engineering | 2 | OPEN | batch1 |
 | `pos2` | Nurse III | 17 | 48,313 | Health | 1 | FILLED | batch1 |
 | `pos3` | Accountant II | 15 | 42,159 | Treasury | 1 | OPEN | batch1 |
 | `pos4` | IT Officer I | 19 | 54,461 | HR Office | 1 | DRAFT | batch2 |
 | `pos5` | Social Welfare Officer II | 15 | 42,159 | Social Welfare | 1 | DRAFT | batch2 |
 
-Each position has 7 default document requirements (Letter of Intent, PDS, Performance Rating, Eligibility Certificate, Transcript, Training Certs, Designation Orders).
+Each catalog master and each instance has 7 default document requirements (Letter of Intent, PDS, Performance Rating, Eligibility Certificate, Transcript, Training Certs, Designation Orders).
 
 ### Applications (8)
 | Variable | Position | Applicant | Status |
@@ -134,7 +142,7 @@ Uses correct controller action names and lowercase entity names matching the rea
 - **Application history** (`entity: 'application'`): `SUBMIT_APPLICATION`, `ENDORSE_APPLICATION`, `SHORTLIST_APPLICATION`, `CREATE_INTERVIEW`, `COMPLETE_INTERVIEW`, `SAVE_ASSESSMENT_SCORE`, `QUALIFY_APPLICANTS`, `SELECT_APPLICANTS`, `CREATE_APPOINTMENT`
 - **Appointments** (`entity: 'appointment'`): `CREATE_APPOINTMENT`, `UPDATE_APPOINTMENT`, `VERIFY_REQUIREMENT`
 - **Interviews** (`entity: 'interview_schedule'`): `CREATE_INTERVIEW`, `COMPLETE_INTERVIEW`
-- **CSC Batches** (`entity: 'csc_publication_batch'`): `CREATE`, `UPDATE`
+- **Publications** (`entity: 'publication'`): `CREATE`, `UPDATE`
 - **Training** (`entity: 'training'`): `CREATE`, `UPDATE`
 
 All attributed to the correct actor (hrAdmin, officeAdmin, healthAdmin, or applicant).
@@ -144,8 +152,10 @@ All attributed to the correct actor (hrAdmin, officeAdmin, healthAdmin, or appli
 ## How to Add New Seed Data
 
 ### Pattern: New Position
+Use the `makePosition()` helper — it creates the catalog master **and** the snapshotted instance
+(both with the given document requirements) in one call. `cscBatchId` is the publication id.
 ```typescript
-const posX = await prisma.position.create({
+const posX = await makePosition({
   data: {
     title: 'Position Title',
     itemNumber: 'OSEC-XXX-NN-YYYY',
@@ -158,20 +168,16 @@ const posX = await prisma.position.create({
     competency: '...',
     placeOfAssignment: '...',
     description: '...',
-    status: 'OPEN', // DRAFT, OPEN, CLOSED, FILLED
+    status: 'OPEN', // DRAFT, OPEN, CLOSED, FILLED (instance only)
     openDate: new Date('2026-01-15'),
     closeDate: new Date('2026-01-30'),
     slots: 1,
     lguId: lgu.id,
     departmentId: engDept?.id,
     createdBy: hrAdmin.id,
-    cscBatchId: batch1.id,
+    cscBatchId: batch1.id, // = publicationId
   },
-});
-// Add 7 default document requirements
-for (const req of defaultDocReqs) {
-  await prisma.positionDocumentRequirement.create({ data: { positionId: posX.id, ...req } });
-}
+}, defaultDocReqs);
 ```
 
 ### Pattern: New Application
@@ -259,8 +265,8 @@ addLog(hrAdminId, 'VERIFY_REQUIREMENT', 'appointment', appointmentId, null, { re
 addLog(hrAdminId, 'CREATE_INTERVIEW', 'interview_schedule', interviewId, null, { positionId, scheduleDate, venue }, new Date('...'));
 addLog(hrAdminId, 'COMPLETE_INTERVIEW', 'interview_schedule', interviewId, { status: 'SCHEDULED' }, { status: 'COMPLETED' }, new Date('...'));
 
-// CSC Batches (entity: 'csc_publication_batch')
-addLog(hrAdminId, 'CREATE', 'csc_publication_batch', batchId, null, { batchNumber, description }, new Date('...'));
+// Publications (entity: 'publication')
+addLog(hrAdminId, 'CREATE', 'publication', batchId, null, { publicationNumber, description }, new Date('...'));
 
 // Training (entity: 'training')
 addLog(hrAdminId, 'CREATE', 'training', trainingId, null, { title, type }, new Date('...'));

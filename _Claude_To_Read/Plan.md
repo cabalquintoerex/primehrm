@@ -68,7 +68,7 @@ Post-login, users land on the module launcher and pick where to go.
 
 | Module | Base | Pages |
 |--------|------|-------|
-| RSP | `/rsp` | `dashboard`, `csc-batches`, `csc-batches/:id`, `positions`, `applications`, `applications/:id`, `interviews`, `interviews/:id`, `assessments/:positionId`, `selection`, `appointments`, `appointments/:id`, `reports`, `profile`, `process-flow` |
+| RSP | `/rsp` | `dashboard`, `positions`, `publications`, `publications/:id`, `applications`, `applications/:id`, `interviews`, `interviews/:id`, `assessments/:positionId`, `selection`, `appointments`, `appointments/:id`, `reports`, `profile`, `process-flow` |
 | L&D | `/lnd` | `dashboard`, `training`, `training/:id`, `reports`, `profile` |
 | Administration | `/admin` | `dashboard` (super admin), `lgus`, `departments`, `users`, `audit-logs`, `profile` |
 
@@ -450,6 +450,7 @@ primehrm/
 | Method | Endpoint | Description | Access |
 |--------|----------|-------------|--------|
 | GET | `/api/positions` | List positions (admin) | LGU Admins |
+| GET | `/api/positions/templates` | Distinct prior positions for reuse (pre-fill) | LGU Admins |
 | GET | `/api/positions/:id` | Get position detail | LGU Admins |
 | POST | `/api/positions` | Create position | LGU_HR_ADMIN |
 | PUT | `/api/positions/:id` | Update position | LGU_HR_ADMIN |

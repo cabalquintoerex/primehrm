@@ -20,7 +20,7 @@ export const getPublicCareers = async (req: Request, res: Response) => {
     const where: any = {
       lguId: lgu.id,
       status: 'OPEN',
-      cscBatch: { isPublished: true },
+      publication: { isPublished: true },
     };
 
     if (departmentId) where.departmentId = Number(departmentId);
@@ -83,7 +83,7 @@ export const getPublicPosition = async (req: Request, res: Response) => {
         id: Number(id),
         lguId: lgu.id,
         status: 'OPEN',
-        cscBatch: { isPublished: true },
+        publication: { isPublished: true },
       },
       include: {
         department: { select: { id: true, name: true } },

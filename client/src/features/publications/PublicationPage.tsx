@@ -21,9 +21,9 @@ import { Plus, Pencil, Trash2, Search, Loader2, Eye, FileStack, CheckCircle, Clo
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { CscPublicationBatch, PaginatedResponse } from '@/types';
+import type { Publication, PaginatedResponse } from '@/types';
 
-export function CscBatchPage() {
+export function PublicationPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -33,83 +33,82 @@ export function CscBatchPage() {
   const [publishedFilter, setPublishedFilter] = useState<string>('ALL');
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingBatch, setEditingBatch] = useState<CscPublicationBatch | null>(null);
+  const [editing, setEditing] = useState<Publication | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingBatch, setDeletingBatch] = useState<CscPublicationBatch | null>(null);
-  const [formData, setFormData] = useState({ batchNumber: '', description: '', openDate: '' });
+  const [deleting, setDeleting] = useState<Publication | null>(null);
+  const [formData, setFormData] = useState({ publicationNumber: '', description: '', openDate: '' });
 
-  const { data, isLoading } = useQuery<PaginatedResponse<CscPublicationBatch>>({
-    queryKey: ['csc-batches', debouncedSearch, publishedFilter, page],
+  const { data, isLoading } = useQuery<PaginatedResponse<Publication>>({
+    queryKey: ['publications', debouncedSearch, publishedFilter, page],
     queryFn: async () => {
       const params: Record<string, any> = { search: debouncedSearch, page, limit: 20 };
       if (publishedFilter !== 'ALL') params.published = publishedFilter === 'PUBLISHED' ? 'true' : 'false';
-      const { data } = await api.get('/csc-batches', { params });
+      const { data } = await api.get('/publications', { params });
       return data;
     },
   });
 
-  // Stats
-  const totalBatches = data?.meta.total ?? 0;
+  const totalPublications = data?.meta.total ?? 0;
   const publishedCount = data?.data.filter(b => b.isPublished).length ?? 0;
   const unpublishedCount = data?.data.filter(b => !b.isPublished).length ?? 0;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (editingBatch) {
-        await api.put(`/csc-batches/${editingBatch.id}`, formData);
+      if (editing) {
+        await api.put(`/publications/${editing.id}`, formData);
       } else {
-        await api.post('/csc-batches', formData);
+        await api.post('/publications', formData);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['csc-batches'] });
-      toast.success(editingBatch ? 'Batch updated' : 'Batch created');
+      queryClient.invalidateQueries({ queryKey: ['publications'] });
+      toast.success(editing ? 'Publication updated' : 'Publication created');
       closeDialog();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to save batch');
+      toast.error(error.response?.data?.message || 'Failed to save publication');
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => api.delete(`/csc-batches/${id}`),
+    mutationFn: async (id: number) => api.delete(`/publications/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['csc-batches'] });
-      toast.success('Batch deleted');
+      queryClient.invalidateQueries({ queryKey: ['publications'] });
+      toast.success('Publication deleted');
       setDeleteDialogOpen(false);
-      setDeletingBatch(null);
+      setDeleting(null);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete batch');
+      toast.error(error.response?.data?.message || 'Failed to delete publication');
     },
   });
 
   const openCreate = () => {
-    setEditingBatch(null);
-    setFormData({ batchNumber: '', description: '', openDate: '' });
+    setEditing(null);
+    setFormData({ publicationNumber: '', description: '', openDate: '' });
     setDialogOpen(true);
   };
 
-  const openEdit = (batch: CscPublicationBatch) => {
-    setEditingBatch(batch);
+  const openEdit = (publication: Publication) => {
+    setEditing(publication);
     setFormData({
-      batchNumber: batch.batchNumber,
-      description: batch.description || '',
-      openDate: batch.openDate ? batch.openDate.split('T')[0] : '',
+      publicationNumber: publication.publicationNumber,
+      description: publication.description || '',
+      openDate: publication.openDate ? publication.openDate.split('T')[0] : '',
     });
     setDialogOpen(true);
   };
 
   const closeDialog = () => {
     setDialogOpen(false);
-    setEditingBatch(null);
-    setFormData({ batchNumber: '', description: '', openDate: '' });
+    setEditing(null);
+    setFormData({ publicationNumber: '', description: '', openDate: '' });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.batchNumber.trim()) {
-      toast.error('Batch number is required');
+    if (!formData.publicationNumber.trim()) {
+      toast.error('Publication number is required');
       return;
     }
     if (!formData.openDate) {
@@ -123,13 +122,13 @@ export function CscBatchPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">CSC Publication Batches</h1>
-          <p className="text-sm text-muted-foreground">Manage CSC publication batches for position postings</p>
+          <h1 className="text-xl font-bold tracking-tight">Publications</h1>
+          <p className="text-sm text-muted-foreground">Create publications and manage the positions posted within them</p>
         </div>
         {!isSuperAdmin && (
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
-            New Batch
+            New Publication
           </Button>
         )}
       </div>
@@ -142,8 +141,8 @@ export function CscBatchPage() {
               <FileStack className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{totalBatches}</p>
-              <p className="text-sm text-muted-foreground">Total Batches</p>
+              <p className="text-2xl font-bold">{totalPublications}</p>
+              <p className="text-sm text-muted-foreground">Total Publications</p>
             </div>
           </CardContent>
         </Card>
@@ -176,7 +175,7 @@ export function CscBatchPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search batches..."
+            placeholder="Search publications..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
@@ -199,7 +198,7 @@ export function CscBatchPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Batch No.</TableHead>
+              <TableHead>Publication No.</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Posting Date</TableHead>
               <TableHead>Closing Date</TableHead>
@@ -218,25 +217,25 @@ export function CscBatchPage() {
             ) : data?.data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  No batches found
+                  No publications found
                 </TableCell>
               </TableRow>
             ) : (
-              data?.data.map((batch) => (
-                <TableRow key={batch.id}>
-                  <TableCell className="font-medium">{batch.batchNumber}</TableCell>
+              data?.data.map((publication) => (
+                <TableRow key={publication.id}>
+                  <TableCell className="font-medium">{publication.publicationNumber}</TableCell>
                   <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                    {batch.description || '-'}
+                    {publication.description || '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {new Date(batch.openDate).toLocaleDateString()}
+                    {new Date(publication.openDate).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {new Date(batch.closeDate).toLocaleDateString()}
+                    {new Date(publication.closeDate).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>{batch._count?.positions ?? 0}</TableCell>
+                  <TableCell>{publication._count?.positions ?? 0}</TableCell>
                   <TableCell>
-                    {batch.isPublished ? (
+                    {publication.isPublished ? (
                       <Badge className="bg-green-600 hover:bg-green-700">Published</Badge>
                     ) : (
                       <Badge variant="secondary">Unpublished</Badge>
@@ -247,19 +246,19 @@ export function CscBatchPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => navigate(`/rsp/csc-batches/${batch.id}`)}
+                        onClick={() => navigate(`/rsp/publications/${publication.id}`)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      {!isSuperAdmin && !batch.isPublished && (
+                      {!isSuperAdmin && !publication.isPublished && (
                         <>
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(batch)}>
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(publication)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => { setDeletingBatch(batch); setDeleteDialogOpen(true); }}
+                            onClick={() => { setDeleting(publication); setDeleteDialogOpen(true); }}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -295,19 +294,19 @@ export function CscBatchPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingBatch ? 'Edit Batch' : 'Create New Batch'}</DialogTitle>
+            <DialogTitle>{editing ? 'Edit Publication' : 'Create New Publication'}</DialogTitle>
             <DialogDescription>
-              {editingBatch ? 'Update batch details' : 'Create a new CSC publication batch'}
+              {editing ? 'Update publication details' : 'Create a new publication for position postings'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="batchNumber">Batch Number *</Label>
+                <Label htmlFor="publicationNumber">Publication Number *</Label>
                 <Input
-                  id="batchNumber"
-                  value={formData.batchNumber}
-                  onChange={(e) => setFormData(prev => ({ ...prev, batchNumber: e.target.value }))}
+                  id="publicationNumber"
+                  value={formData.publicationNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, publicationNumber: e.target.value }))}
                   placeholder="e.g., 2026-001"
                 />
               </div>
@@ -342,7 +341,7 @@ export function CscBatchPage() {
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Optional description for this batch"
+                  placeholder="Optional description for this publication"
                   rows={3}
                 />
               </div>
@@ -351,7 +350,7 @@ export function CscBatchPage() {
               <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
               <Button type="submit" disabled={saveMutation.isPending}>
                 {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingBatch ? 'Update' : 'Create'}
+                {editing ? 'Update' : 'Create'}
               </Button>
             </DialogFooter>
           </form>
@@ -362,16 +361,16 @@ export function CscBatchPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Batch</DialogTitle>
+            <DialogTitle>Delete Publication</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete batch "{deletingBatch?.batchNumber}"? This action cannot be undone.
+              Are you sure you want to delete publication "{deleting?.publicationNumber}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
             <Button
               variant="destructive"
-              onClick={() => deletingBatch && deleteMutation.mutate(deletingBatch.id)}
+              onClick={() => deleting && deleteMutation.mutate(deleting.id)}
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

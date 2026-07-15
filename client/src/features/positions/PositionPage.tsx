@@ -6,7 +6,6 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -18,14 +17,13 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { Plus, Pencil, Trash2, Search, Loader2, X } from 'lucide-react';
 import { SuggestionInput, SuggestionTextarea } from '@/components/ui/suggestion-input';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import type { Position, PositionStatus, Department, PaginatedResponse, PositionDocumentRequirement, CscPublicationBatch } from '@/types';
+import type { PositionCatalog, Department, PaginatedResponse } from '@/types';
 
 interface DocRequirement {
   label: string;
@@ -43,26 +41,22 @@ const DEFAULT_REQUIREMENTS: DocRequirement[] = [
   { label: 'Designation Orders', description: 'If applicable.', isRequired: false },
 ];
 
-const positionSchema = z.object({
+const catalogSchema = z.object({
   title: z.string().min(1, 'Position Title is required'),
   itemNumber: z.string().optional(),
   salaryGrade: z.coerce.number().int().positive().optional().or(z.literal('')),
   monthlySalary: z.coerce.number().positive().optional().or(z.literal('')),
   placeOfAssignment: z.string().optional(),
-  slots: z.coerce.number().int().positive().default(1),
   departmentId: z.string().optional(),
-  cscBatchId: z.string().min(1, 'CSC Publication Batch is required').refine(val => val !== 'none', 'CSC Publication Batch is required'),
   education: z.string().optional(),
   training: z.string().optional(),
   experience: z.string().optional(),
   eligibility: z.string().optional(),
   competency: z.string().optional(),
   description: z.string().optional(),
-  openDate: z.string().optional(),
-  closeDate: z.string().optional(),
 });
 
-type PositionFormData = z.infer<typeof positionSchema>;
+type CatalogFormData = z.infer<typeof catalogSchema>;
 
 // LGU Salary Schedule - Step 1 (Second Tranche, Special Cities & 1st Class Provinces/Cities)
 const SALARY_GRADE_TABLE: Record<number, number> = {
@@ -74,46 +68,25 @@ const SALARY_GRADE_TABLE: Record<number, number> = {
   26: 126252, 27: 142663, 28: 160469, 29: 180492, 30: 203200,
 };
 
-function formatPeso(amount: number | null): string {
-  if (amount === null || amount === undefined) return '-';
-  return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function StatusBadge({ status }: { status: PositionStatus }) {
-  switch (status) {
-    case 'DRAFT':
-      return <Badge variant="secondary">Draft</Badge>;
-    case 'OPEN':
-      return <Badge className="bg-green-600 hover:bg-green-700">Open</Badge>;
-    case 'CLOSED':
-      return <Badge variant="outline">Closed</Badge>;
-    case 'FILLED':
-      return <Badge className="bg-blue-600 hover:bg-blue-700">Filled</Badge>;
-    default:
-      return <Badge variant="secondary">{status}</Badge>;
-  }
-}
-
 export function PositionPage() {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search);
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingPosition, setEditingPosition] = useState<Position | null>(null);
+  const [editing, setEditing] = useState<PositionCatalog | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingPosition, setDeletingPosition] = useState<Position | null>(null);
+  const [deleting, setDeleting] = useState<PositionCatalog | null>(null);
   const [docRequirements, setDocRequirements] = useState<DocRequirement[]>([]);
+  const [isActive, setIsActive] = useState(true);
 
-  const { data, isLoading } = useQuery<PaginatedResponse<Position>>({
-    queryKey: ['positions', debouncedSearch, statusFilter, page],
+  const { data, isLoading } = useQuery<PaginatedResponse<PositionCatalog>>({
+    queryKey: ['position-catalog', debouncedSearch, page],
     queryFn: async () => {
       const params: Record<string, any> = { search: debouncedSearch, page, limit: 20 };
-      if (statusFilter !== 'ALL') params.status = statusFilter;
-      const { data } = await api.get('/positions', { params });
+      const { data } = await api.get('/position-catalog', { params });
       return data;
     },
     staleTime: 0,
@@ -127,28 +100,17 @@ export function PositionPage() {
     },
   });
 
-  const { data: cscBatches } = useQuery<CscPublicationBatch[]>({
-    queryKey: ['csc-batches', 'list'],
-    queryFn: async () => {
-      const { data } = await api.get('/csc-batches', { params: { limit: 100 } });
-      return data.data;
-    },
-    staleTime: 0,
-  });
-
-  const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useForm<PositionFormData>({
-    resolver: zodResolver(positionSchema),
-    defaultValues: { slots: 1 },
+  const { register, handleSubmit, reset, control, setValue, formState: { errors } } = useForm<CatalogFormData>({
+    resolver: zodResolver(catalogSchema),
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (formData: PositionFormData) => {
+    mutationFn: async (formData: CatalogFormData) => {
       const payload = {
         ...formData,
         salaryGrade: formData.salaryGrade === '' ? null : formData.salaryGrade || null,
         monthlySalary: formData.monthlySalary === '' ? null : formData.monthlySalary || null,
         departmentId: formData.departmentId && formData.departmentId !== 'none' ? Number(formData.departmentId) : null,
-        cscBatchId: formData.cscBatchId && formData.cscBatchId !== 'none' ? Number(formData.cscBatchId) : null,
         itemNumber: formData.itemNumber || null,
         placeOfAssignment: formData.placeOfAssignment || null,
         education: formData.education || null,
@@ -157,32 +119,23 @@ export function PositionPage() {
         eligibility: formData.eligibility || null,
         competency: formData.competency || null,
         description: formData.description || null,
-        openDate: formData.openDate || null,
-        closeDate: formData.closeDate || null,
+        isActive,
+        documentRequirements: docRequirements.map((r, i) => ({
+          label: r.label,
+          description: r.description || null,
+          isRequired: r.isRequired,
+          sortOrder: i + 1,
+        })),
       };
-      let positionId: number;
-      if (editingPosition) {
-        await api.put(`/positions/${editingPosition.id}`, payload);
-        positionId = editingPosition.id;
+      if (editing) {
+        await api.put(`/position-catalog/${editing.id}`, payload);
       } else {
-        const res = await api.post('/positions', payload);
-        positionId = res.data.data?.id || res.data.id;
-      }
-      // Save document requirements
-      if (positionId) {
-        await api.post(`/positions/${positionId}/requirements`, {
-          requirements: docRequirements.map((r, i) => ({
-            label: r.label,
-            description: r.description || null,
-            isRequired: r.isRequired,
-            sortOrder: i + 1,
-          })),
-        });
+        await api.post('/position-catalog', payload);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['positions'] });
-      toast.success(editingPosition ? 'Position updated' : 'Position created');
+      queryClient.invalidateQueries({ queryKey: ['position-catalog'] });
+      toast.success(editing ? 'Position updated' : 'Position created');
       closeDialog();
     },
     onError: (error: any) => {
@@ -191,72 +144,55 @@ export function PositionPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => api.delete(`/positions/${id}`),
+    mutationFn: async (id: number) => api.delete(`/position-catalog/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['position-catalog'] });
       toast.success('Position deleted');
       setDeleteDialogOpen(false);
-      setDeletingPosition(null);
+      setDeleting(null);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to delete position');
     },
   });
 
-  const statusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: PositionStatus }) => {
-      return api.put(`/positions/${id}/status`, { status });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['positions'] });
-      toast.success('Position status updated');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update status');
-    },
-  });
-
   const openCreate = () => {
-    setEditingPosition(null);
+    setEditing(null);
     reset({
       title: '', itemNumber: '', salaryGrade: '', monthlySalary: '',
-      placeOfAssignment: '', slots: 1, departmentId: '', cscBatchId: '', education: '',
+      placeOfAssignment: '', departmentId: '', education: '',
       training: '', experience: '', eligibility: '', competency: '', description: '',
-      openDate: '', closeDate: '',
     });
     setDocRequirements([...DEFAULT_REQUIREMENTS]);
+    setIsActive(true);
     setDialogOpen(true);
   };
 
-  const openEdit = async (position: Position) => {
-    setEditingPosition(position);
+  const openEdit = async (position: PositionCatalog) => {
+    setEditing(position);
     reset({
       title: position.title,
       itemNumber: position.itemNumber || '',
       salaryGrade: position.salaryGrade ?? '',
       monthlySalary: position.monthlySalary != null ? Number(position.monthlySalary) : '',
       placeOfAssignment: position.placeOfAssignment || '',
-      slots: position.slots,
       departmentId: position.departmentId ? String(position.departmentId) : '',
-      cscBatchId: position.cscBatchId ? String(position.cscBatchId) : '',
       education: position.education || '',
       training: position.training || '',
       experience: position.experience || '',
       eligibility: position.eligibility || '',
       competency: position.competency || '',
       description: position.description || '',
-      openDate: position.openDate ? position.openDate.split('T')[0] : '',
-      closeDate: position.closeDate ? position.closeDate.split('T')[0] : '',
     });
-    // Fetch existing requirements
+    setIsActive(position.isActive);
     try {
-      const { data } = await api.get(`/positions/${position.id}/requirements`);
-      const reqs = (data.data || data || []) as PositionDocumentRequirement[];
-      if (reqs.length > 0) {
-        setDocRequirements(reqs.map(r => ({ label: r.label, description: r.description || '', isRequired: r.isRequired })));
-      } else {
-        setDocRequirements([...DEFAULT_REQUIREMENTS]);
-      }
+      const { data } = await api.get(`/position-catalog/${position.id}`);
+      const reqs = (data.data?.documentRequirements || []) as { label: string; description: string | null; isRequired: boolean }[];
+      setDocRequirements(
+        reqs.length > 0
+          ? reqs.map((r) => ({ label: r.label, description: r.description || '', isRequired: r.isRequired }))
+          : [...DEFAULT_REQUIREMENTS]
+      );
     } catch {
       setDocRequirements([...DEFAULT_REQUIREMENTS]);
     }
@@ -265,7 +201,7 @@ export function PositionPage() {
 
   const closeDialog = () => {
     setDialogOpen(false);
-    setEditingPosition(null);
+    setEditing(null);
     reset();
   };
 
@@ -273,8 +209,10 @@ export function PositionPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Position Management</h1>
-          <p className="text-sm text-muted-foreground">Manage job positions and vacancies</p>
+          <h1 className="text-xl font-bold tracking-tight">Positions</h1>
+          <p className="text-sm text-muted-foreground">
+            Master catalog of position definitions. Add these to a publication to open them for applications.
+          </p>
         </div>
         {!isSuperAdmin && (
           <Button onClick={openCreate}>
@@ -284,7 +222,7 @@ export function PositionPage() {
         )}
       </div>
 
-      {/* Search & Filter */}
+      {/* Search */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -295,18 +233,6 @@ export function PositionPage() {
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Status</SelectItem>
-            <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="OPEN">Open</SelectItem>
-            <SelectItem value="CLOSED">Closed</SelectItem>
-            <SelectItem value="FILLED">Filled</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Table */}
@@ -318,22 +244,21 @@ export function PositionPage() {
               <TableHead>Item No.</TableHead>
               <TableHead>Salary Grade</TableHead>
               <TableHead>Department</TableHead>
-              <TableHead>CSC Batch</TableHead>
+              <TableHead>Used in</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Slots</TableHead>
-              <TableHead className="w-[200px]">Actions</TableHead>
+              <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : data?.data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No positions found
                 </TableCell>
               </TableRow>
@@ -344,62 +269,26 @@ export function PositionPage() {
                   <TableCell className="text-muted-foreground">{position.itemNumber || '-'}</TableCell>
                   <TableCell>{position.salaryGrade ?? '-'}</TableCell>
                   <TableCell>{position.department?.name || '-'}</TableCell>
-                  <TableCell className="text-muted-foreground">{position.cscBatch?.batchNumber || '-'}</TableCell>
-                  <TableCell><StatusBadge status={position.status} /></TableCell>
-                  <TableCell>{position.slots}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {position._count?.positions ?? 0} publication{(position._count?.positions ?? 0) !== 1 ? 's' : ''}
+                  </TableCell>
+                  <TableCell>
+                    {position.isActive
+                      ? <Badge className="bg-green-600 hover:bg-green-700">Active</Badge>
+                      : <Badge variant="secondary">Inactive</Badge>}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {!isSuperAdmin && position.status === 'DRAFT' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => statusMutation.mutate({ id: position.id, status: 'OPEN' })}
-                          disabled={statusMutation.isPending || !position.cscBatch?.isPublished}
-                          title={!position.cscBatch?.isPublished ? 'CSC batch must be published first' : ''}
-                        >
-                          Publish
-                        </Button>
-                      )}
-                      {!isSuperAdmin && position.status === 'OPEN' && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => statusMutation.mutate({ id: position.id, status: 'DRAFT' })}
-                            disabled={statusMutation.isPending}
-                          >
-                            Unpublish
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => statusMutation.mutate({ id: position.id, status: 'CLOSED' })}
-                            disabled={statusMutation.isPending}
-                          >
-                            Close
-                          </Button>
-                        </>
-                      )}
-                      {!isSuperAdmin && position.status === 'CLOSED' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => statusMutation.mutate({ id: position.id, status: 'FILLED' })}
-                          disabled={statusMutation.isPending}
-                        >
-                          Mark Filled
-                        </Button>
-                      )}
                       {!isSuperAdmin && (
                         <Button variant="ghost" size="icon" onClick={() => openEdit(position)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                       )}
-                      {!isSuperAdmin && position.status === 'DRAFT' && (
+                      {!isSuperAdmin && (position._count?.positions ?? 0) === 0 && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => { setDeletingPosition(position); setDeleteDialogOpen(true); }}
+                          onClick={() => { setDeleting(position); setDeleteDialogOpen(true); }}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -434,9 +323,9 @@ export function PositionPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingPosition ? 'Edit Position' : 'Add New Position'}</DialogTitle>
+            <DialogTitle>{editing ? 'Edit Position' : 'Add New Position'}</DialogTitle>
             <DialogDescription>
-              {editingPosition ? 'Update position details' : 'Create a new job position'}
+              {editing ? 'Update the reusable position definition' : 'Define a reusable position for the catalog'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit((data) => saveMutation.mutate(data))}>
@@ -449,7 +338,7 @@ export function PositionPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Position Title *</Label>
-                  <SuggestionInput id="title" {...register('title')} suggestion="Administrative Officer III" />
+                  <Input id="title" autoComplete="off" placeholder="e.g. Administrative Officer III" {...register('title')} />
                   {errors.title && <p className="text-sm text-destructive">{errors.title.message}</p>}
                 </div>
                 <div className="space-y-2">
@@ -458,7 +347,7 @@ export function PositionPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="salaryGrade">Salary / Job / Pay Grade</Label>
                   <Input
@@ -497,11 +386,6 @@ export function PositionPage() {
                   />
                   {errors.monthlySalary && <p className="text-sm text-destructive">{errors.monthlySalary.message}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="slots">No. of Vacancy/ies</Label>
-                  <Input id="slots" type="number" {...register('slots')} placeholder="1" />
-                  {errors.slots && <p className="text-sm text-destructive">{errors.slots.message}</p>}
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -530,50 +414,6 @@ export function PositionPage() {
                       </Select>
                     )}
                   />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>CSC Publication Batch *</Label>
-                <Controller
-                  name="cscBatchId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value || 'none'} onValueChange={(val) => {
-                      field.onChange(val);
-                      const batch = cscBatches?.find(b => String(b.id) === val);
-                      if (batch) {
-                        setValue('openDate', batch.openDate.split('T')[0]);
-                        setValue('closeDate', batch.closeDate.split('T')[0]);
-                      }
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select CSC batch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Select a batch</SelectItem>
-                        {cscBatches?.map((batch) => (
-                          <SelectItem key={batch.id} value={String(batch.id)}>
-                            {batch.batchNumber}{batch.isPublished ? ' (Published)' : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.cscBatchId && <p className="text-sm text-destructive">{errors.cscBatchId.message}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="openDate">Posting Date</Label>
-                  <Input id="openDate" type="date" {...register('openDate')} disabled={!!watch('cscBatchId') && watch('cscBatchId') !== 'none'} className={watch('cscBatchId') && watch('cscBatchId') !== 'none' ? 'bg-muted' : ''} />
-                  {watch('cscBatchId') && watch('cscBatchId') !== 'none' && <p className="text-xs text-muted-foreground">From CSC batch</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="closeDate">Closing Date</Label>
-                  <Input id="closeDate" type="date" {...register('closeDate')} disabled={!!watch('cscBatchId') && watch('cscBatchId') !== 'none'} className={watch('cscBatchId') && watch('cscBatchId') !== 'none' ? 'bg-muted' : ''} />
-                  {watch('cscBatchId') && watch('cscBatchId') !== 'none' && <p className="text-xs text-muted-foreground">From CSC batch</p>}
                 </div>
               </div>
 
@@ -667,9 +507,7 @@ export function PositionPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => {
-                            setDocRequirements(docRequirements.filter((_, i) => i !== index));
-                          }}
+                          onClick={() => setDocRequirements(docRequirements.filter((_, i) => i !== index))}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -681,20 +519,27 @@ export function PositionPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setDocRequirements([...docRequirements, { label: '', description: '', isRequired: false }]);
-                  }}
+                  onClick={() => setDocRequirements([...docRequirements, { label: '', description: '', isRequired: false }])}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Requirement
                 </Button>
               </div>
+
+              {editing && (
+                <div className="flex items-center gap-2 pt-2">
+                  <Switch checked={isActive} onCheckedChange={setIsActive} />
+                  <span className="text-sm text-muted-foreground">
+                    {isActive ? 'Active — available to add to publications' : 'Inactive — hidden from new publications'}
+                  </span>
+                </div>
+              )}
             </div>
             <DialogFooter className="mt-4">
               <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
               <Button type="submit" disabled={saveMutation.isPending}>
                 {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingPosition ? 'Update' : 'Create'}
+                {editing ? 'Update' : 'Create'}
               </Button>
             </DialogFooter>
           </form>
@@ -707,14 +552,14 @@ export function PositionPage() {
           <DialogHeader>
             <DialogTitle>Delete Position</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{deletingPosition?.title}"? This action cannot be undone.
+              Are you sure you want to delete "{deleting?.title}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
             <Button
               variant="destructive"
-              onClick={() => deletingPosition && deleteMutation.mutate(deletingPosition.id)}
+              onClick={() => deleting && deleteMutation.mutate(deleting.id)}
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

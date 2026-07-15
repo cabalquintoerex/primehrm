@@ -3,6 +3,32 @@ import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+/**
+ * Create a catalog master position and a snapshotted Position instance inside a publication.
+ * `arg.data` is the existing position payload (definition + status/slots/dates + cscBatchId, which
+ * is treated as the publicationId). The definition and document requirements are copied into both
+ * the reusable catalog entry and the frozen instance.
+ */
+async function makePosition(arg: { data: any }, docReqs: any[]) {
+  const { status, slots, openDate, closeDate, cscBatchId, requirements, ...def } = arg.data;
+  const catalog = await prisma.positionCatalog.create({
+    data: { ...def, isActive: true, documentRequirements: { create: docReqs } },
+  });
+  return prisma.position.create({
+    data: {
+      ...def,
+      status,
+      slots,
+      openDate,
+      closeDate,
+      requirements,
+      catalogId: catalog.id,
+      publicationId: cscBatchId,
+      documentRequirements: { create: docReqs },
+    },
+  });
+}
+
 async function main() {
   console.log('Seeding database...');
 
@@ -21,7 +47,9 @@ async function main() {
   await prisma.workExperienceSheet.deleteMany();
   await prisma.positionDocumentRequirement.deleteMany();
   await prisma.position.deleteMany();
-  await prisma.cscPublicationBatch.deleteMany();
+  await prisma.positionCatalogRequirement.deleteMany();
+  await prisma.positionCatalog.deleteMany();
+  await prisma.publication.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.user.deleteMany();
   await prisma.department.deleteMany();
@@ -1612,9 +1640,9 @@ async function main() {
   console.log('Created Treasury Office Admin:', treasuryAdminUser.email);
 
   // --- CSC Publication Batches ---
-  const batch1 = await prisma.cscPublicationBatch.create({
+  const batch1 = await prisma.publication.create({
     data: {
-      batchNumber: '2026-001',
+      publicationNumber: '2026-001',
       description: 'First quarter regular publication — 5 positions across Engineering, Health, and Treasury offices',
       openDate: new Date('2026-01-15'),
       closeDate: new Date('2026-01-30'),
@@ -1625,9 +1653,9 @@ async function main() {
     },
   });
 
-  const batch2 = await prisma.cscPublicationBatch.create({
+  const batch2 = await prisma.publication.create({
     data: {
-      batchNumber: '2026-002',
+      publicationNumber: '2026-002',
       description: 'Second quarter publication — IT and Social Welfare positions',
       openDate: new Date('2026-03-01'),
       closeDate: new Date('2026-03-16'),
@@ -1652,7 +1680,7 @@ async function main() {
   // --- Positions ---
 
   // Position 1: Administrative Officer V (Engineering, 2 slots, OPEN — Batch 1)
-  const pos1 = await prisma.position.create({
+  const pos1 = await makePosition({
     data: {
       title: 'Administrative Officer V',
       itemNumber: 'OSEC-ADOF5-12-2026',
@@ -1674,13 +1702,10 @@ async function main() {
       createdBy: hrAdmin.id,
       cscBatchId: batch1.id,
     },
-  });
-  for (const req of defaultDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: pos1.id, ...req } });
-  }
+  }, defaultDocReqs);
 
   // Position 2: Nurse III (Health Dept, 1 slot, FILLED — Batch 1)
-  const pos2 = await prisma.position.create({
+  const pos2 = await makePosition({
     data: {
       title: 'Nurse III',
       itemNumber: 'OSEC-NRS3-05-2026',
@@ -1702,13 +1727,10 @@ async function main() {
       createdBy: hrAdmin.id,
       cscBatchId: batch1.id,
     },
-  });
-  for (const req of defaultDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: pos2.id, ...req } });
-  }
+  }, defaultDocReqs);
 
   // Position 3: Accountant II (Treasury, 1 slot, OPEN — Batch 1)
-  const pos3 = await prisma.position.create({
+  const pos3 = await makePosition({
     data: {
       title: 'Accountant II',
       itemNumber: 'OSEC-ACNT2-08-2026',
@@ -1730,13 +1752,10 @@ async function main() {
       createdBy: hrAdmin.id,
       cscBatchId: batch1.id,
     },
-  });
-  for (const req of defaultDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: pos3.id, ...req } });
-  }
+  }, defaultDocReqs);
 
   // Position 4: IT Officer I (HR Office, 1 slot, DRAFT — Batch 2)
-  const pos4 = await prisma.position.create({
+  const pos4 = await makePosition({
     data: {
       title: 'Information Technology Officer I',
       itemNumber: 'OSEC-ITO1-03-2026',
@@ -1758,13 +1777,10 @@ async function main() {
       createdBy: hrAdmin.id,
       cscBatchId: batch2.id,
     },
-  });
-  for (const req of defaultDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: pos4.id, ...req } });
-  }
+  }, defaultDocReqs);
 
   // Position 5: Social Welfare Officer II (SW Office, 1 slot, DRAFT — Batch 2)
-  const pos5 = await prisma.position.create({
+  const pos5 = await makePosition({
     data: {
       title: 'Social Welfare Officer II',
       itemNumber: 'OSEC-SWO2-06-2026',
@@ -1786,10 +1802,7 @@ async function main() {
       createdBy: hrAdmin.id,
       cscBatchId: batch2.id,
     },
-  });
-  for (const req of defaultDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: pos5.id, ...req } });
-  }
+  }, defaultDocReqs);
 
   console.log('Created 5 positions for Cebu City (3 open/filled + 2 draft)');
 
@@ -2271,9 +2284,9 @@ async function main() {
   addLog(hrAdmin.id, 'COMPLETE_INTERVIEW', 'interview_schedule', interview2.id, { status: 'SCHEDULED' }, { status: 'COMPLETED' }, new Date('2026-02-10T16:30:00'));
 
   // --- CSC Batch Audit Logs ---
-  addLog(hrAdmin.id, 'CREATE', 'csc_publication_batch', batch1.id, null, { batchNumber: '2026-001', description: 'First quarter regular publication' }, new Date('2026-01-10T09:00:00'));
+  addLog(hrAdmin.id, 'CREATE', 'csc_publication_batch', batch1.id, null, { publicationNumber: '2026-001', description: 'First quarter regular publication' }, new Date('2026-01-10T09:00:00'));
   addLog(hrAdmin.id, 'UPDATE', 'csc_publication_batch', batch1.id, { isPublished: false }, { isPublished: true }, new Date('2026-01-15T08:00:00'));
-  addLog(hrAdmin.id, 'CREATE', 'csc_publication_batch', batch2.id, null, { batchNumber: '2026-002', description: 'Second quarter publication' }, new Date('2026-02-28T09:00:00'));
+  addLog(hrAdmin.id, 'CREATE', 'csc_publication_batch', batch2.id, null, { publicationNumber: '2026-002', description: 'Second quarter publication' }, new Date('2026-02-28T09:00:00'));
 
   // --- Training Audit Logs ---
   addLog(hrAdmin.id, 'CREATE', 'training', training1.id, null, { title: 'Public Service Values and Ethics', type: 'FOUNDATION' }, new Date('2026-01-08T09:00:00'));
@@ -2320,9 +2333,9 @@ async function main() {
   console.log('Created Lapu-Lapu Tourism Office Admin');
 
   // --- CSC Publication Batches ---
-  const llBatch1 = await prisma.cscPublicationBatch.create({
+  const llBatch1 = await prisma.publication.create({
     data: {
-      batchNumber: '2026-001',
+      publicationNumber: '2026-001',
       description: 'First quarter publication — Engineering, Tourism, and Treasury positions',
       openDate: new Date('2026-02-01'),
       closeDate: new Date('2026-02-16'),
@@ -2333,9 +2346,9 @@ async function main() {
     },
   });
 
-  const llBatch2 = await prisma.cscPublicationBatch.create({
+  const llBatch2 = await prisma.publication.create({
     data: {
-      batchNumber: '2026-002',
+      publicationNumber: '2026-002',
       description: 'Second quarter publication — Health and HR positions',
       openDate: new Date('2026-03-15'),
       closeDate: new Date('2026-03-30'),
@@ -2346,9 +2359,9 @@ async function main() {
     },
   });
 
-  const llBatch3 = await prisma.cscPublicationBatch.create({
+  const llBatch3 = await prisma.publication.create({
     data: {
-      batchNumber: '2026-003',
+      publicationNumber: '2026-003',
       description: 'Third quarter publication — Public safety, social services, and IT positions',
       openDate: new Date('2026-04-01'),
       closeDate: new Date('2026-04-16'),
@@ -2359,9 +2372,9 @@ async function main() {
     },
   });
 
-  const llBatch4 = await prisma.cscPublicationBatch.create({
+  const llBatch4 = await prisma.publication.create({
     data: {
-      batchNumber: '2026-004',
+      publicationNumber: '2026-004',
       description: 'Fourth quarter publication — Environment and administrative support',
       openDate: new Date('2026-05-01'),
       closeDate: new Date('2026-05-16'),
@@ -2388,7 +2401,7 @@ async function main() {
   // --- Positions ---
 
   // Position 1: Civil Engineer III (Engineering, 2 slots, OPEN — Batch 1)
-  const llPos1 = await prisma.position.create({
+  const llPos1 = await makePosition({
     data: {
       title: 'Civil Engineer III',
       itemNumber: 'LLC-CE3-01-2026',
@@ -2410,13 +2423,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch1.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos1.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 2: Tourism Operations Officer III (Tourism, 1 slot, OPEN — Batch 1)
-  const llPos2 = await prisma.position.create({
+  const llPos2 = await makePosition({
     data: {
       title: 'Tourism Operations Officer III',
       itemNumber: 'LLC-TOO3-02-2026',
@@ -2438,13 +2448,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch1.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos2.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 3: Revenue Collection Officer II (Treasury, 1 slot, FILLED — Batch 1)
-  const llPos3 = await prisma.position.create({
+  const llPos3 = await makePosition({
     data: {
       title: 'Revenue Collection Officer II',
       itemNumber: 'LLC-RCO2-03-2026',
@@ -2466,13 +2473,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch1.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos3.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 4: Nurse II (Health, 1 slot, OPEN — Batch 2)
-  const llPos4 = await prisma.position.create({
+  const llPos4 = await makePosition({
     data: {
       title: 'Nurse II',
       itemNumber: 'LLC-NRS2-04-2026',
@@ -2494,13 +2498,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch2.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos4.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 5: Administrative Officer III (HR, 1 slot, OPEN — Batch 2)
-  const llPos5 = await prisma.position.create({
+  const llPos5 = await makePosition({
     data: {
       title: 'Administrative Officer III',
       itemNumber: 'LLC-AO3-05-2026',
@@ -2522,13 +2523,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch2.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos5.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 6: Fire Marshal I (Engineering, 1 slot, OPEN — Batch 3)
-  const llPos6 = await prisma.position.create({
+  const llPos6 = await makePosition({
     data: {
       title: 'Fire Marshal I',
       itemNumber: 'LLC-FM1-06-2026',
@@ -2550,13 +2548,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch3.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos6.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 7: Social Welfare Officer II (Tourism repurposed as social, 1 slot, OPEN — Batch 3)
-  const llPos7 = await prisma.position.create({
+  const llPos7 = await makePosition({
     data: {
       title: 'Social Welfare Officer II',
       itemNumber: 'LLC-SWO2-07-2026',
@@ -2578,13 +2573,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch3.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos7.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 8: Information Technology Officer I (HR/IT, 1 slot, OPEN — Batch 3)
-  const llPos8 = await prisma.position.create({
+  const llPos8 = await makePosition({
     data: {
       title: 'Information Technology Officer I',
       itemNumber: 'LLC-ITO1-08-2026',
@@ -2606,13 +2598,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch3.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos8.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 9: Environmental Management Specialist II (Engineering, 1 slot, OPEN — Batch 4)
-  const llPos9 = await prisma.position.create({
+  const llPos9 = await makePosition({
     data: {
       title: 'Environmental Management Specialist II',
       itemNumber: 'LLC-EMS2-09-2026',
@@ -2634,13 +2623,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch4.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos9.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 10: Administrative Aide VI (Treasury, 2 slots, OPEN — Batch 4)
-  const llPos10 = await prisma.position.create({
+  const llPos10 = await makePosition({
     data: {
       title: 'Administrative Aide VI',
       itemNumber: 'LLC-AA6-10-2026',
@@ -2662,13 +2648,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch4.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos10.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 11: Tourism Promotion Officer I (Tourism, 1 slot, OPEN — Batch 4)
-  const llPos11 = await prisma.position.create({
+  const llPos11 = await makePosition({
     data: {
       title: 'Tourism Promotion Officer I',
       itemNumber: 'LLC-TPO1-11-2026',
@@ -2690,13 +2673,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch4.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos11.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 12: Driver I (Engineering, 1 slot, OPEN — Batch 4)
-  const llPos12 = await prisma.position.create({
+  const llPos12 = await makePosition({
     data: {
       title: 'Driver I',
       itemNumber: 'LLC-DRV1-12-2026',
@@ -2718,13 +2698,10 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch4.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos12.id, ...req } });
-  }
+  }, llDocReqs);
 
   // Position 13: Utility Worker I (Engineering, 2 slots, OPEN — Batch 4)
-  const llPos13 = await prisma.position.create({
+  const llPos13 = await makePosition({
     data: {
       title: 'Utility Worker I',
       itemNumber: 'LLC-UW1-13-2026',
@@ -2746,10 +2723,7 @@ async function main() {
       createdBy: llHrAdmin.id,
       cscBatchId: llBatch4.id,
     },
-  });
-  for (const req of llDocReqs) {
-    await prisma.positionDocumentRequirement.create({ data: { positionId: llPos13.id, ...req } });
-  }
+  }, llDocReqs);
 
   console.log('Created 13 positions for Lapu-Lapu');
 
@@ -3254,13 +3228,13 @@ async function main() {
   llAddLog(llHrAdmin.id, 'COMPLETE_INTERVIEW', 'interview_schedule', llInterview3.id, { status: 'SCHEDULED' }, { status: 'COMPLETED' }, new Date('2026-02-25T16:30:00'));
 
   // --- CSC Batch Audit Logs ---
-  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch1.id, null, { batchNumber: '2026-001', description: 'First quarter publication' }, new Date('2026-01-25T09:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch1.id, null, { publicationNumber: '2026-001', description: 'First quarter publication' }, new Date('2026-01-25T09:00:00'));
   llAddLog(llHrAdmin.id, 'UPDATE', 'csc_publication_batch', llBatch1.id, { isPublished: false }, { isPublished: true }, new Date('2026-02-01T08:00:00'));
-  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch2.id, null, { batchNumber: '2026-002', description: 'Second quarter publication' }, new Date('2026-03-10T09:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch2.id, null, { publicationNumber: '2026-002', description: 'Second quarter publication' }, new Date('2026-03-10T09:00:00'));
   llAddLog(llHrAdmin.id, 'UPDATE', 'csc_publication_batch', llBatch2.id, { isPublished: false }, { isPublished: true }, new Date('2026-03-15T08:00:00'));
-  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch3.id, null, { batchNumber: '2026-003', description: 'Third quarter publication' }, new Date('2026-03-25T09:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch3.id, null, { publicationNumber: '2026-003', description: 'Third quarter publication' }, new Date('2026-03-25T09:00:00'));
   llAddLog(llHrAdmin.id, 'UPDATE', 'csc_publication_batch', llBatch3.id, { isPublished: false }, { isPublished: true }, new Date('2026-04-01T08:00:00'));
-  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch4.id, null, { batchNumber: '2026-004', description: 'Fourth quarter publication' }, new Date('2026-04-20T09:00:00'));
+  llAddLog(llHrAdmin.id, 'CREATE', 'csc_publication_batch', llBatch4.id, null, { publicationNumber: '2026-004', description: 'Fourth quarter publication' }, new Date('2026-04-20T09:00:00'));
   llAddLog(llHrAdmin.id, 'UPDATE', 'csc_publication_batch', llBatch4.id, { isPublished: false }, { isPublished: true }, new Date('2026-05-01T08:00:00'));
 
   // --- Training Audit Logs ---

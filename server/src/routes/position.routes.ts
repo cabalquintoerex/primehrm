@@ -2,7 +2,6 @@ import { Router } from 'express';
 import {
   getPositions,
   getPosition,
-  createPosition,
   updatePosition,
   deletePosition,
   updatePositionStatus,
@@ -17,7 +16,6 @@ const router = Router();
 
 router.get('/', authenticate, requireLguAdmin, getPositions);
 router.get('/:id', authenticate, getPosition);
-router.post('/', authenticate, requireLguAdmin, denySuperAdminWrite, createPosition);
 router.put('/:id', authenticate, requireLguAdmin, denySuperAdminWrite, updatePosition);
 router.delete('/:id', authenticate, requireLguAdmin, denySuperAdminWrite, deletePosition);
 router.put('/:id/status', authenticate, requireLguAdmin, denySuperAdminWrite, updatePositionStatus);

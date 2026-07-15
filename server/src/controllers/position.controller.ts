@@ -2,11 +2,16 @@ import { Response } from 'express';
 import prisma from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import { createAuditLog } from '../utils/audit';
-import { getDefaultRequirements } from './positionRequirement.controller';
 
+/**
+ * Position instances. A Position is a snapshot of a PositionCatalog definition placed inside a
+ * Publication. It carries the recruitment status (DRAFT/OPEN/CLOSED/FILLED), slots and dates, and
+ * owns the whole applicant pipeline. Instances are created by adding catalog positions to a
+ * publication (see publication.controller.addPositionsToPublication).
+ */
 export const getPositions = async (req: AuthRequest, res: Response) => {
   try {
-    const { search, status, departmentId, lguId, page = '1', limit = '20' } = req.query;
+    const { search, status, departmentId, lguId, publicationId, page = '1', limit = '20' } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
     const where: any = {};
@@ -20,6 +25,7 @@ export const getPositions = async (req: AuthRequest, res: Response) => {
 
     if (status) where.status = String(status);
     if (departmentId) where.departmentId = Number(departmentId);
+    if (publicationId) where.publicationId = Number(publicationId);
     if (search) {
       where.title = { contains: String(search) };
     }
@@ -32,7 +38,7 @@ export const getPositions = async (req: AuthRequest, res: Response) => {
         include: {
           department: { select: { id: true, name: true } },
           lgu: { select: { id: true, name: true } },
-          cscBatch: { select: { id: true, batchNumber: true, isPublished: true } },
+          publication: { select: { id: true, publicationNumber: true, isPublished: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -62,7 +68,7 @@ export const getPosition = async (req: AuthRequest, res: Response) => {
       include: {
         department: { select: { id: true, name: true } },
         lgu: { select: { id: true, name: true, slug: true } },
-        cscBatch: { select: { id: true, batchNumber: true, isPublished: true } },
+        publication: { select: { id: true, publicationNumber: true, isPublished: true } },
       },
     });
 
@@ -76,82 +82,18 @@ export const getPosition = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const createPosition = async (req: AuthRequest, res: Response) => {
-  try {
-    const {
-      title, itemNumber, salaryGrade, monthlySalary, education, training,
-      experience, eligibility, competency, placeOfAssignment, description,
-      requirements, status, openDate, closeDate, slots, lguId, departmentId,
-      cscBatchId,
-    } = req.body;
-
-    if (!cscBatchId) {
-      return res.status(400).json({ message: 'CSC Publication Batch is required' });
-    }
-
-    // Non-super admins can only create positions for their own LGU
-    const effectiveLguId = req.user!.role === 'SUPER_ADMIN' ? lguId : req.user!.lguId;
-
-    const position = await prisma.position.create({
-      data: {
-        title,
-        itemNumber,
-        salaryGrade,
-        monthlySalary,
-        education,
-        training,
-        experience,
-        eligibility,
-        competency,
-        placeOfAssignment,
-        description,
-        requirements,
-        status,
-        openDate: openDate ? new Date(openDate) : undefined,
-        closeDate: closeDate ? new Date(closeDate) : undefined,
-        slots,
-        lguId: effectiveLguId,
-        departmentId,
-        cscBatchId: cscBatchId ? Number(cscBatchId) : null,
-        createdBy: req.user!.id,
-      },
-    });
-
-    // Auto-create default document requirements
-    const defaultRequirements = getDefaultRequirements();
-    await Promise.all(
-      defaultRequirements.map((req) =>
-        prisma.positionDocumentRequirement.create({
-          data: {
-            positionId: position.id,
-            ...req,
-          },
-        })
-      )
-    );
-
-    await createAuditLog({
-      userId: req.user!.id,
-      action: 'CREATE',
-      entity: 'position',
-      entityId: position.id,
-      newValues: position,
-      ipAddress: req.ip,
-    });
-
-    return res.status(201).json({ data: position });
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
+/**
+ * Edit a position instance inside a publication (slots, dates, department, and any per-publication
+ * tweak to the snapshotted definition). The reusable definition lives in the catalog; changes here
+ * only affect this instance.
+ */
 export const updatePosition = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const {
       title, itemNumber, salaryGrade, monthlySalary, education, training,
       experience, eligibility, competency, placeOfAssignment, description,
-      requirements, openDate, closeDate, slots, departmentId, cscBatchId,
+      requirements, openDate, closeDate, slots, departmentId,
     } = req.body;
 
     const existing = await prisma.position.findUnique({ where: { id: Number(id) } });
@@ -183,7 +125,6 @@ export const updatePosition = async (req: AuthRequest, res: Response) => {
         closeDate: closeDate ? new Date(closeDate) : undefined,
         slots,
         departmentId,
-        cscBatchId: cscBatchId !== undefined ? (cscBatchId ? Number(cscBatchId) : null) : undefined,
       },
     });
 
@@ -207,7 +148,10 @@ export const deletePosition = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
-    const existing = await prisma.position.findUnique({ where: { id: Number(id) } });
+    const existing = await prisma.position.findUnique({
+      where: { id: Number(id) },
+      include: { _count: { select: { applications: true } } },
+    });
     if (!existing) {
       return res.status(404).json({ message: 'Position not found' });
     }
@@ -220,6 +164,10 @@ export const deletePosition = async (req: AuthRequest, res: Response) => {
     // Can only delete DRAFT positions
     if (existing.status !== 'DRAFT') {
       return res.status(400).json({ message: 'Only DRAFT positions can be deleted' });
+    }
+
+    if (existing._count.applications > 0) {
+      return res.status(400).json({ message: 'Cannot delete a position with applications' });
     }
 
     await prisma.position.delete({ where: { id: Number(id) } });
@@ -239,6 +187,10 @@ export const deletePosition = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/**
+ * Publish (OPEN) / unpublish (DRAFT) / close (CLOSED) a single position instance. Managed from the
+ * Publication detail page. A position can only be opened once its publication is published.
+ */
 export const updatePositionStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -246,7 +198,7 @@ export const updatePositionStatus = async (req: AuthRequest, res: Response) => {
 
     const existing = await prisma.position.findUnique({
       where: { id: Number(id) },
-      include: { cscBatch: { select: { isPublished: true } } },
+      include: { publication: { select: { isPublished: true } } },
     });
     if (!existing) {
       return res.status(404).json({ message: 'Position not found' });
@@ -257,9 +209,9 @@ export const updatePositionStatus = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Insufficient permissions' });
     }
 
-    // Cannot publish a position if its CSC batch is not published
-    if (existing.status === 'DRAFT' && status === 'OPEN' && !existing.cscBatch?.isPublished) {
-      return res.status(400).json({ message: 'Cannot publish position: CSC batch must be published first' });
+    // Cannot open a position if its publication is not published
+    if (existing.status === 'DRAFT' && status === 'OPEN' && !existing.publication?.isPublished) {
+      return res.status(400).json({ message: 'Cannot open position: its publication must be published first' });
     }
 
     // Validate status transitions
