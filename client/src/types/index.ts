@@ -84,6 +84,7 @@ export interface Position {
   catalogId?: number | null;
   department?: Pick<Department, 'id' | 'name'> | null;
   publication?: Pick<Publication, 'id' | 'publicationNumber' | 'isPublished'> | null;
+  catalog?: Pick<PositionCatalog, 'id' | 'education' | 'training' | 'experience' | 'eligibility' | 'competency' | 'description'> | null;
   _count?: { applications: number };
 }
 

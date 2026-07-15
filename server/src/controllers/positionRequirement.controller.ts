@@ -83,7 +83,7 @@ export const setPositionRequirements = async (req: AuthRequest, res: Response) =
 
     const position = await prisma.position.findUnique({
       where: { id: Number(id) },
-      select: { id: true, lguId: true },
+      select: { id: true, lguId: true, status: true },
     });
 
     if (!position) {
@@ -93,6 +93,11 @@ export const setPositionRequirements = async (req: AuthRequest, res: Response) =
     // Non-super admins can only update positions in their own LGU
     if (req.user!.role !== 'SUPER_ADMIN' && position.lguId !== req.user!.lguId) {
       return res.status(403).json({ message: 'Insufficient permissions' });
+    }
+
+    // A published (non-DRAFT) posting is frozen. Unpublish it first to edit its requirements.
+    if (position.status !== 'DRAFT') {
+      return res.status(400).json({ message: 'Only draft positions can be edited. Unpublish it first.' });
     }
 
     // Delete existing requirements and create new ones in a transaction

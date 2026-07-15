@@ -52,6 +52,7 @@ const steps = [
       'Each selection is snapshotted into the publication as a DRAFT posting (definition + document requirements frozen at that moment)',
       'After CSC publishes the positions on their official website, HR Admin clicks "Mark as Published"',
       'System sets the publication to Published; each posting can then be individually published (OPEN), unpublished, or closed from this page',
+      'While a posting is DRAFT, HR can Edit its qualifications, slots, and document requirements for this publication only — the catalog master and other publications are untouched (a "Customized" badge marks overrides; "Reset to catalog default" restores them). Published postings are frozen.',
       'OPEN positions appear on the public careers page',
     ],
   },

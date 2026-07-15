@@ -765,6 +765,14 @@ re-encoding and put status actions in the wrong place.
   `PublicationDetailPage.tsx` (add-from-catalog with per-position slots; **per-instance Publish/
   Unpublish/Close/Mark-Filled actions moved here from Positions**; publish/unpublish publication;
   CS Form 9 PDF/Excel export retained)
+- [x] **Edit-in-publication** (per-publication qualification overrides): each DRAFT posting has an
+  Edit dialog to change its qualifications, slots, department, and document requirements **for that
+  publication only** — the catalog master and other publications are untouched (it edits the snapshot).
+  A **"Customized"** badge flags instances whose QS differ from the catalog; a **Reset to catalog
+  default** button re-copies the master's QS + requirements. Server freezes non-DRAFT postings:
+  `PUT /positions/:id` and `POST /positions/:id/requirements` reject edits unless status is DRAFT
+  (unpublish to edit). `getPublication` now includes each position's `catalog` QS for the badge.
+  This is the answer to "same title, different requirements per publication" — no separate module.
 - [x] Sidebar: **Positions now before Publications**; "CSC Batches" renamed to "Publications"
 - [x] Routes `/rsp/positions`, `/rsp/publications`, `/rsp/publications/:id`; legacy `/rsp/csc-batches`
   and `/admin/csc-batches` redirect to `/rsp/publications`

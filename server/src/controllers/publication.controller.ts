@@ -64,6 +64,12 @@ export const getPublication = async (req: AuthRequest, res: Response) => {
         positions: {
           include: {
             department: { select: { id: true, name: true } },
+            catalog: {
+              select: {
+                id: true, education: true, training: true, experience: true,
+                eligibility: true, competency: true, description: true,
+              },
+            },
             _count: { select: { applications: true } },
           },
           orderBy: { createdAt: 'desc' },

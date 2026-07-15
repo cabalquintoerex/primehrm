@@ -106,6 +106,11 @@ export const updatePosition = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Insufficient permissions' });
     }
 
+    // A published (non-DRAFT) posting is frozen. Unpublish it first to edit.
+    if (existing.status !== 'DRAFT') {
+      return res.status(400).json({ message: 'Only draft positions can be edited. Unpublish it first.' });
+    }
+
     const position = await prisma.position.update({
       where: { id: Number(id) },
       data: {

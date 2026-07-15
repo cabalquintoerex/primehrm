@@ -84,6 +84,10 @@ Notes:
 4. Each posting can also be individually **Published / Unpublished / Closed / Marked Filled** from this
    page. If the publication is **Unpublished**, all its **OPEN** postings revert to **DRAFT**
    (CLOSED/FILLED are unaffected).
+5. While a posting is **DRAFT**, HR can **Edit** it to override its qualifications, slots, department,
+   and document requirements **for this publication only** — the catalog master and other publications
+   are untouched. A "Customized" badge marks overridden postings; "Reset to catalog default" restores
+   the master's values. Once published (OPEN), a posting is frozen; unpublish it to edit.
 
 ---
 
