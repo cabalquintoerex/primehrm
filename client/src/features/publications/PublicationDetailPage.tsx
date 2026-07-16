@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Plus, Pencil, Trash2, Globe, XCircle, FileDown, FileSpreadsheet, RotateCcw, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Pencil, Trash2, Globe, XCircle, FileDown, FileSpreadsheet, RotateCcw, X, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateCSCBatchForm } from '@/lib/generateCSCBatchForm';
 import { generateCSCBatchExcel } from '@/lib/generateCSCBatchExcel';
@@ -282,6 +282,14 @@ export function PublicationDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {user?.lgu?.slug && (
+            <Button asChild variant="outline">
+              <a href={`/${user.lgu.slug}/careers`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                View Careers Page
+              </a>
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => generateCSCBatchForm(publication)}

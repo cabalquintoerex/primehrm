@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, Search, Loader2, Eye, FileStack, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Loader2, Eye, FileStack, CheckCircle, Clock, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -125,12 +125,22 @@ export function PublicationPage() {
           <h1 className="text-xl font-bold tracking-tight">Publications</h1>
           <p className="text-sm text-muted-foreground">Create publications and manage the positions posted within them</p>
         </div>
-        {!isSuperAdmin && (
-          <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Publication
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {user?.lgu?.slug && (
+            <Button asChild variant="outline">
+              <a href={`/${user.lgu.slug}/careers`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                View Careers Page
+              </a>
+            </Button>
+          )}
+          {!isSuperAdmin && (
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Publication
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
