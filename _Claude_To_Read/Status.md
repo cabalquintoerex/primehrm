@@ -773,6 +773,8 @@ re-encoding and put status actions in the wrong place.
   `PUT /positions/:id` and `POST /positions/:id/requirements` reject edits unless status is DRAFT
   (unpublish to edit). `getPublication` now includes each position's `catalog` QS for the badge.
   This is the answer to "same title, different requirements per publication" — no separate module.
+- [x] **"View Careers Page"** button on both the Publications list and detail headers — opens
+  `/{lgu-slug}/careers` in a new tab (real anchor; hidden for super admins, who have no LGU).
 - [x] Sidebar: **Positions now before Publications**; "CSC Batches" renamed to "Publications"
 - [x] Routes `/rsp/positions`, `/rsp/publications`, `/rsp/publications/:id`; legacy `/rsp/csc-batches`
   and `/admin/csc-batches` redirect to `/rsp/publications`
