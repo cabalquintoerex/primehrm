@@ -50,7 +50,7 @@ export const login = async (req: Request, res: Response) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
       path: process.env.COOKIE_PATH || '/',
       maxAge: 15 * 60 * 1000,
@@ -58,7 +58,7 @@ export const login = async (req: Request, res: Response) => {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
       path: process.env.COOKIE_PATH || '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -131,7 +131,7 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     res.cookie('token', tokens.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
       path: process.env.COOKIE_PATH || '/',
       maxAge: 15 * 60 * 1000,
@@ -139,7 +139,7 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
       path: process.env.COOKIE_PATH || '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -185,7 +185,7 @@ export const register = async (req: Request, res: Response) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
       path: process.env.COOKIE_PATH || '/',
       maxAge: 15 * 60 * 1000,
@@ -193,7 +193,7 @@ export const register = async (req: Request, res: Response) => {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
       path: process.env.COOKIE_PATH || '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
