@@ -19,9 +19,9 @@ Type=simple
 # Match an existing non-root deploy user on the box (e.g. www-data or a dedicated user)
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/llcprime/server
+WorkingDirectory=/var/www/html/llcprime/server
 # Reads server/.env for DATABASE_URL, JWT secrets, PORT, CORS_ORIGIN
-EnvironmentFile=/var/www/llcprime/server/.env
+EnvironmentFile=/var/www/html/llcprime/server/.env
 # Absolute path to node — check with `which node`; adjust if using nvm
 ExecStart=/usr/bin/node dist/app.js
 Restart=on-failure

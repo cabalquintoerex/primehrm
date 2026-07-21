@@ -1,7 +1,7 @@
 // PM2 process file for the LGU PRIME-HRM backend — ALTERNATIVE to the systemd unit.
 // Use this if the other apps on the box are already managed by PM2.
 //
-//   cd /var/www/llcprime/server
+//   cd /var/www/html/llcprime/server
 //   pm2 start ../deploy/ecosystem.config.cjs
 //   pm2 save            # persist across reboots (run `pm2 startup` once, first time)
 //   pm2 logs llcprime-api
@@ -12,7 +12,7 @@ module.exports = {
   apps: [
     {
       name: 'llcprime-api',
-      cwd: '/var/www/llcprime/server',
+      cwd: '/var/www/html/llcprime/server',
       script: 'dist/app.js',
       instances: 1,
       exec_mode: 'fork',

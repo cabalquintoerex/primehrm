@@ -1,179 +1,174 @@
-# LGU PRIME-HRM — Linux Deployment (Ubuntu, shared server)
-
-Deploy target agreed with the team:
+# LGU PRIME-HRM — Linux Deployment (Ubuntu + Apache, shared server)
 
 | Setting | Value |
 |---------|-------|
 | Server | Ubuntu at **10.30.0.15** (shared — hosts other `apps.cebu.gov.ph` projects) |
-| Public URL | **https://apps.cebu.gov.ph/llcprime** (sub-path) |
-| Backend port | **5010** (Node/Express; must not collide with other apps) |
-| Database | **new `llcprime` MySQL DB + user** on the existing MySQL instance |
-| Initial data | **demo seed** (Lapu-Lapu pilot data) — see the caveat in step 7 |
-| Web server | **nginx** reverse proxy (assumed — adjust if the box uses Apache) |
+| Public URL | **apps.cebu.gov.ph/llcprime** (sub-path) |
+| Web server | **Apache 2.4** (same family as the ACCESS project box; `mod_rewrite`/`ssl` enabled, `AllowOverride All` on `/var/www/`) |
+| Deploy path | **`/var/www/html/llcprime/`** (matches the server's `/var/www/html/<app>` convention) |
+| Backend | **Node/Express on port 5010**, run as a service, proxied by Apache |
+| Database | **new `llcprime` MySQL DB + user** on the existing MySQL |
+| Initial data | **demo seed** (Lapu-Lapu pilot) — see the caveat in step 8 |
 
-> **Shared-server rule:** every change here is *additive*. The nginx edit adds three
-> `location` blocks inside the existing `apps.cebu.gov.ph` server block — it never creates a new
-> `server{}` and never touches the other apps. Always `sudo nginx -t` before reloading; it fails
-> safe, leaving the running config intact if anything is wrong.
+> **Shared-server rule:** every change is *additive*. Apache config goes in its own
+> `conf-available/llcprime.conf` enabled with `a2enconf` — it defines only the `/llcprime` URL
+> space and never touches the other apps or the `apps.cebu.gov.ph` vhost. Always
+> `sudo apache2ctl configtest` before reloading; it fails safe.
 
-All config artifacts referenced below live in the repo's **`deploy/`** directory.
+Config artifacts live in the repo's **`deploy/`** directory.
 
----
-
-## Why a sub-path needs code (already done)
-
-The app was built to run from `/`. Serving it under `/llcprime` required base-path awareness,
-which is now driven entirely by **one build flag** — `VITE_BASE_PATH` — so local dev still runs at
-`/` unchanged:
-
-- `vite.config.ts` → `base: process.env.VITE_BASE_PATH || '/'`
-- `App.tsx` → router `basename` from `import.meta.env.BASE_URL`
-- `services/api.ts` → axios `baseURL`, token refresh, and the 401 redirect all use `BASE_URL`
-- `lib/basePath.ts` → `withBasePath()` / `assetUrl()` prefix the base onto DB-stored `/uploads/...`
-  asset paths and real `<a href>`/`window.open` navigations (these bypass the router)
-
-Because the path is a build flag, **changing `/llcprime` to anything else is a rebuild, not a code
-edit** — set `VITE_BASE_PATH` and the nginx path to match.
+> **Not PHP:** the ACCESS convention (PHP under Apache's DocumentRoot with `.htaccess`) does not
+> apply to the Node backend. PRIME's backend is a separate Node process on 5010; Apache only
+> **proxies** `/llcprime/api` + `/llcprime/uploads` to it and **serves** the built React static
+> files. `ProxyPass` is not allowed in `.htaccess`, which is why the config is a conf file.
 
 ---
 
-## One-time server setup
+## 0. Discovery — confirm the box matches these assumptions FIRST
 
-### 1. Prerequisites
+Run these read-only checks and share the output before changing anything. They confirm 10.30.0.15
+really mirrors the ACCESS setup and reveal the two unknowns that affect config (the vhost scheme
+and a free port):
+
 ```bash
-node -v          # need Node 18+ (app developed on 20). If missing, install via nodesort/nvm
-mysql --version  # existing MySQL 8.x
-# pick the free backend port — confirm 5010 is not taken:
-sudo ss -tlnp | grep ':5010' || echo "5010 is free"
+# identity + web server
+hostname -I; lsb_release -d
+apache2 -v
+apache2ctl -M 2>/dev/null | grep -E 'proxy_module|proxy_http|rewrite|ssl'   # which are already on
+
+# the apps.cebu.gov.ph vhost — HTTP or HTTPS? which file?
+sudo grep -rl "apps.cebu.gov.ph" /etc/apache2/sites-enabled/
+sudo grep -rE "ServerName|VirtualHost|SSLEngine" /etc/apache2/sites-enabled/ | grep -iA2 apps.cebu.gov.ph
+
+# runtimes
+node -v; npm -v; which node
+mysql --version
+
+# is the backend port free?
+sudo ss -tlnp | grep ':5010' || echo "5010 free"
+
+# what's already at /var/www/html (so we don't clash)
+ls -la /var/www/html/
 ```
 
-### 2. Get the code onto the box
+> **Why the scheme matters:** the app sets `secure` cookies in production. If `apps.cebu.gov.ph` is
+> **HTTPS**, everything is fine. If it's **HTTP only**, the browser won't send those cookies and the
+> silent token-refresh path breaks (login still works — it uses a Bearer token in localStorage).
+> If HTTP-only, set `NODE_ENV=production` but we'll flip the cookie `secure` flag off via env.
+> Tell me the scheme and I'll adjust before we build.
+
+---
+
+## Why a sub-path needs code (already done, in the repo)
+
+Driven by one build flag (`VITE_BASE_PATH`) so local dev still runs at `/`:
+- `vite.config` `base`, `App.tsx` router `basename`, axios `baseURL`/refresh/401-redirect — all from
+  `import.meta.env.BASE_URL`
+- `lib/basePath.ts` (`withBasePath`/`assetUrl`) prefixes the base onto DB-stored `/uploads/...`
+  assets and real `<a href>`/`window.open` navigations
+- Server: `app.set('trust proxy', 1)` (real client IP in audit logs behind Apache) and
+  env-driven `COOKIE_PATH` (scopes cookies to `/llcprime`)
+
+Changing the path later is a rebuild + config edit, not a code change.
+
+---
+
+## One-time setup
+
+### 1. Code onto the box (git, matching ACCESS conventions)
 ```bash
-sudo mkdir -p /var/www/llcprime
-sudo chown "$USER":"$USER" /var/www/llcprime
-git clone <repo-url> /var/www/llcprime
-cd /var/www/llcprime
-git checkout <deploy-branch>     # the branch carrying these changes
+sudo mkdir -p /var/www/html/llcprime
+sudo chown "$USER":"$USER" /var/www/html/llcprime
+git clone <repo-url> /var/www/html/llcprime      # or via the /root/.ssh deploy key as ACCESS does
+cd /var/www/html/llcprime
+git checkout <deploy-branch>
+git config core.fileMode false                   # avoid phantom chmod diffs on Linux
 ```
 
-### 3. Database
+### 2. Database
 ```bash
-# Edit the password in deploy/create-db.sql first, then:
+# edit the password in deploy/create-db.sql first
 sudo mysql < deploy/create-db.sql
 ```
 
-### 4. Backend — env, install, schema, build
+### 3. Backend — env, install, schema, build
 ```bash
-cd /var/www/llcprime/server
+cd /var/www/html/llcprime/server
 cp ../deploy/server.env.example .env
-# Edit .env: set the real DB password (matching step 3), and generate two secrets:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # JWT_SECRET
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # JWT_REFRESH_SECRET
+nano .env      # set DB password (match step 2), the two secrets, confirm PORT=5010, CORS_ORIGIN, COOKIE_PATH
 
 npm ci
 npx prisma generate
-npx prisma db push          # creates all tables in the llcprime DB
-npm run build               # tsc → dist/app.js  (exits 0)
-mkdir -p uploads/logos uploads/headers uploads/documents   # ensure upload dirs exist
+npx prisma db push
+npm run build
+mkdir -p uploads/logos uploads/headers uploads/documents
 ```
 
-### 5. Frontend — build at the sub-path
+### 4. Frontend — build at the sub-path
 ```bash
-cd /var/www/llcprime/client
+cd /var/www/html/llcprime/client
 npm ci
-VITE_BASE_PATH=/llcprime/ npm run build      # → client/dist, all assets prefixed /llcprime/
-```
-> The trailing slash on `/llcprime/` matters — it is what Vite writes into every asset URL.
-
-### 6. Run the backend as a service
-Pick **one** — systemd (no extra dependency) or PM2 (if the other apps use it).
-
-**systemd:**
-```bash
-sudo cp /var/www/llcprime/deploy/llcprime-api.service /etc/systemd/system/
-sudo nano /etc/systemd/system/llcprime-api.service   # set User + paths to match the box
-sudo systemctl daemon-reload
-sudo systemctl enable --now llcprime-api
-sudo systemctl status llcprime-api
-curl -s http://127.0.0.1:5010/api/health             # expect {"status":"ok",...}
+VITE_BASE_PATH=/llcprime/ npm run build     # → client/dist, assets prefixed /llcprime/
 ```
 
-**PM2 (alternative):**
+### 5. Backend service (systemd or PM2 — match what the other apps use)
 ```bash
-cd /var/www/llcprime/server
-pm2 start ../deploy/ecosystem.config.cjs
-pm2 save        # (first time also run `pm2 startup` and follow its instructions)
+# systemd:
+sudo cp /var/www/html/llcprime/deploy/llcprime-api.service /etc/systemd/system/
+sudo nano /etc/systemd/system/llcprime-api.service     # set User + confirm paths
+sudo systemctl daemon-reload && sudo systemctl enable --now llcprime-api
+curl -s http://127.0.0.1:5010/api/health               # {"status":"ok",...}
 ```
 
-### 7. Seed the demo data
+### 6. Apache modules + config
 ```bash
-cd /var/www/llcprime/server
-npm run db:seed
-```
-> **⚠ The seed wipes the database on every run** (its first step is `deleteMany` across all
-> tables). Run it exactly once, now, before real data exists. **Never re-run it after go-live** —
-> it would delete real applications and appointments. For a clean production start instead of demo
-> data, skip this step and create a super admin + the real LGU by hand.
->
-> Demo logins after seeding: `superadmin`/`admin123`, `lapulapuhr`/`hradmin123`,
-> `juandelacruz`/`applicant123`.
-
-### 8. nginx — add the three location blocks
-```bash
-# Find the server block for apps.cebu.gov.ph:
-grep -rl "apps.cebu.gov.ph" /etc/nginx/sites-available/ /etc/nginx/conf.d/ 2>/dev/null
-sudo nano <that-file>
-```
-Paste the contents of **`deploy/nginx-llcprime.conf`** *inside* that
-`server { server_name apps.cebu.gov.ph; ... }` block. Then:
-```bash
-sudo nginx -t                    # MUST pass before reloading
-sudo systemctl reload nginx
+sudo a2enmod proxy proxy_http rewrite
+sudo cp /var/www/html/llcprime/deploy/apache-llcprime.conf /etc/apache2/conf-available/llcprime.conf
+sudo a2enconf llcprime
+sudo apache2ctl configtest        # MUST say "Syntax OK"
+sudo systemctl reload apache2
 ```
 
-### 9. Verify
+### 7. Verify
 ```bash
-curl -sI  https://apps.cebu.gov.ph/llcprime/            # 200, text/html
-curl -s   https://apps.cebu.gov.ph/llcprime/api/health  # {"status":"ok",...}
+curl -sI  http://apps.cebu.gov.ph/llcprime/            # (or https) → 200 text/html
+curl -s   http://apps.cebu.gov.ph/llcprime/api/health  # {"status":"ok",...}
 ```
-Then in a browser:
-- `https://apps.cebu.gov.ph/llcprime/` — login page renders (CSS + JS load, no 404s in console)
-- `https://apps.cebu.gov.ph/llcprime/lapu-lapu-city/login` — branded login
-- Sign in, hard-refresh on an inner page (e.g. `/llcprime/rsp/dashboard`) — SPA fallback works
-- Upload an LGU logo (LGU Management) and confirm it displays — verifies the `/llcprime/uploads` path
+Browser: load `/llcprime/`, sign in, hard-refresh an inner route, upload an LGU logo (checks the
+`/llcprime/uploads` proxy).
+
+### 8. Seed the demo data
+```bash
+cd /var/www/html/llcprime/server && npm run db:seed
+```
+> **⚠ Wipes the DB on every run.** Once only, before real data exists. Never after go-live.
+> Demo logins: `superadmin`/`admin123`, `lapulapuhr`/`hradmin123`, `juandelacruz`/`applicant123`.
 
 ---
 
-## Redeploying after a code change
-
+## Redeploy after a change
 ```bash
-cd /var/www/llcprime
-git pull
-
-cd server && npm ci && npx prisma generate && npm run build
-# If the schema changed:  npx prisma db push   (NEVER db:seed on live data)
-sudo systemctl restart llcprime-api            # or: pm2 restart llcprime-api
-
+cd /var/www/html/llcprime && git pull
+cd server && npm ci && npx prisma generate && npm run build   # + npx prisma db push if schema changed
+sudo systemctl restart llcprime-api
 cd ../client && npm ci && VITE_BASE_PATH=/llcprime/ npm run build
-# nginx serves the new client/dist immediately — no reload needed unless the nginx conf changed
+# Apache serves the new dist immediately; reload only if apache-llcprime.conf changed.
 ```
-
----
 
 ## Troubleshooting
+| Symptom | Cause |
+|---------|-------|
+| Blank page, 404s on `/llcprime/assets/*` | Built without `VITE_BASE_PATH=/llcprime/`, or `Alias` path wrong |
+| API 404 / hits another app | `ProxyPass /llcprime/api` missing, or `mod_proxy` not enabled (`a2enmod proxy proxy_http`) |
+| Hard refresh on inner route → 404 | SPA `RewriteRule` missing from the `<Directory>` block |
+| Logo/document links broken | `ProxyPass /llcprime/uploads` missing, or `uploads/` absent/unwritable |
+| 503 Service Unavailable | Backend down (`systemctl status llcprime-api`) or wrong port |
+| Login works but silently logs out | HTTP-only site + `secure` cookies — see the scheme note in §0 |
+| CORS error | `CORS_ORIGIN` ≠ the real scheme+host of apps.cebu.gov.ph |
 
-| Symptom | Likely cause |
-|---------|-------------|
-| Blank page, 404s for `/llcprime/assets/*` in console | Frontend built without `VITE_BASE_PATH=/llcprime/`, or nginx `alias` path wrong |
-| API calls 404 / hit the wrong app | `location /llcprime/api/` missing or lacks the trailing slashes that strip the prefix |
-| Hard refresh on an inner route → 404 | SPA fallback missing — the `try_files … /llcprime/index.html` line |
-| LGU logo / document links broken | `location /llcprime/uploads/` missing, or `uploads/` dir absent / unwritable |
-| 502 Bad Gateway | Backend not running (`systemctl status llcprime-api`) or wrong port in `.env` vs nginx |
-| CORS error in console | `CORS_ORIGIN` in `server/.env` ≠ `https://apps.cebu.gov.ph` |
-| `npm run build` (server) fails | Node < 18, or `npm ci` not run |
-
-## Backups (shared DB)
-Before any redeploy that runs `prisma db push`, snapshot just this app's database:
+## Backup before schema redeploys
 ```bash
 mysqldump llcprime > /var/backups/llcprime-$(date +%F).sql
 ```

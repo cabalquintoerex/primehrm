@@ -30,6 +30,9 @@ import { errorHandler } from './middleware/errorHandler';
 import prisma from './config/database';
 
 const app = express();
+// Behind Apache (reverse proxy): trust the first hop so req.ip is the real client
+// (audit logs) and req.protocol reflects the browser's https.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 
 // Middleware

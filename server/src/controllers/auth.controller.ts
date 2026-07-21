@@ -52,6 +52,7 @@ export const login = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 15 * 60 * 1000,
     });
 
@@ -59,6 +60,7 @@ export const login = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -99,8 +101,8 @@ export const logout = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    res.clearCookie('token');
-    res.clearCookie('refreshToken');
+    res.clearCookie('token', { path: process.env.COOKIE_PATH || '/' });
+    res.clearCookie('refreshToken', { path: process.env.COOKIE_PATH || '/' });
     return res.json({ message: 'Logged out successfully' });
   } catch (error) {
     return res.status(500).json({ message: 'Internal server error' });
@@ -131,6 +133,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 15 * 60 * 1000,
     });
 
@@ -138,6 +141,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -183,6 +187,7 @@ export const register = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 15 * 60 * 1000,
     });
 
@@ -190,6 +195,7 @@ export const register = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
