@@ -91,7 +91,7 @@ const RSP_ALL = ['SUPER_ADMIN', 'LGU_HR_ADMIN', 'LGU_OFFICE_ADMIN'];
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || undefined}>
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public routes */}

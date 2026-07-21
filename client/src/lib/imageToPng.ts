@@ -1,5 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
+import { withBasePath } from './basePath';
 /**
  * Fetches an uploaded image and returns it as a PNG data URI for jsPDF.
  *
@@ -14,7 +13,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
  */
 export async function fetchImageAsPngDataUrl(path?: string | null): Promise<string | null> {
   if (!path) return null;
-  const url = path.startsWith('http') ? path : `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+  const url = withBasePath(path);
 
   let objectUrl: string | undefined;
   try {

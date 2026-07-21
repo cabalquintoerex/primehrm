@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Shield, ArrowRight, Settings, LogOut, Lock } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
+import { assetUrl } from '@/lib/basePath';
 
 /** Per-module card tints. Mirrors the `pillars` treatment on LoginPage so the two screens match. */
 const CARD_STYLES: Record<string, { card: string; iconBg: string; title: string; name: string; desc: string }> = {
@@ -101,7 +102,7 @@ export function ModuleLauncherPage() {
         <div className="flex flex-col items-center text-center mb-10">
           {user.lgu?.logo ? (
             <img
-              src={user.lgu.logo}
+              src={assetUrl(user.lgu.logo)}
               alt={user.lgu.name}
               className="h-20 w-20 rounded-full object-cover bg-white ring-2 ring-emerald-200 shadow-md shadow-emerald-900/5 mb-4"
             />

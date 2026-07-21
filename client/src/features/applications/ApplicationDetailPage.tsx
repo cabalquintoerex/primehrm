@@ -19,8 +19,7 @@ import { ApplicationHistoryTimeline } from './ApplicationHistoryTimeline';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { Application, ApplicationStatus, PersonalDataSheet, PDSData, ApplicationDocument, AssessmentScore, AssessmentGroup } from '@/types';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { assetUrl } from '@/lib/basePath';
 
 const STATUS_CONFIG: Record<ApplicationStatus, { label: string; className: string }> = {
   SUBMITTED: { label: 'Submitted', className: 'bg-gray-500 hover:bg-gray-600 text-white border-transparent' },
@@ -500,7 +499,7 @@ export function ApplicationDetailPage() {
                     <p className="text-xs text-muted-foreground">{formatFileSize(doc.fileSize)}</p>
                   </div>
                   <a
-                    href={`${API_BASE}/${doc.filePath}`}
+                    href={assetUrl(doc.filePath)}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}

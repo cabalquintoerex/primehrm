@@ -81,7 +81,7 @@ export const getLguBySlug = async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
     const lgu = await prisma.lgu.findUnique({
-      where: { slug },
+      where: { slug: String(slug) },
       select: { id: true, name: true, slug: true, logo: true, headerBg: true, address: true, contactNumber: true, email: true },
     });
 

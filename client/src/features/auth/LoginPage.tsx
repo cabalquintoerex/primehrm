@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { postLoginDestination } from '@/lib/modules';
 import type { Lgu } from '@/types';
+import { assetUrl } from '@/lib/basePath';
 
 const loginSchema = z.object({
   login: z.string().min(1, 'Username or email is required'),
@@ -107,7 +108,7 @@ export function LoginPage() {
                 <div className="flex flex-col items-center gap-4 mb-5">
                   {lgu.logo ? (
                     <img
-                      src={lgu.logo}
+                      src={assetUrl(lgu.logo)}
                       alt={lgu.name}
                       className="h-24 w-24 rounded-full border-2 border-emerald-200 object-cover bg-white shadow-md shadow-emerald-900/5"
                     />

@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { Position, Lgu, PositionDocumentRequirement, Application } from '@/types';
 import { homeFor } from '@/lib/modules';
+import { assetUrl } from '@/lib/basePath';
 
 function formatPeso(amount: number | string | null): string {
   if (amount === null || amount === undefined) return '-';
@@ -108,7 +109,7 @@ export function PositionDetailPage() {
             <div className="flex items-center gap-3">
               {lgu?.logo ? (
                 <img
-                  src={lgu.logo}
+                  src={assetUrl(lgu.logo)}
                   alt={lgu.name}
                   className="h-10 w-10 rounded-full border-2 border-emerald-100 object-cover bg-emerald-50"
                 />

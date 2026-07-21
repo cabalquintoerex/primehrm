@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, FileText, Briefcase, ClipboardList, Building2, ExternalLink } from 'lucide-react';
+import { assetUrl } from '@/lib/basePath';
 
 interface PublicLgu {
   id: number;
@@ -122,7 +123,7 @@ export function ApplicantDashboard() {
                   <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-emerald-50 shrink-0">
                     {lgu.logo ? (
                       <img
-                        src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}/${lgu.logo}`}
+                        src={assetUrl(lgu.logo)}
                         alt={lgu.name}
                         className="h-8 w-8 rounded object-cover"
                       />

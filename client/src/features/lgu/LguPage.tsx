@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import type { Lgu, PaginatedResponse, ModuleKey } from '@/types';
 import { MODULES } from '@/lib/modules';
+import { assetUrl } from '@/lib/basePath';
 
 const LICENSABLE: ModuleKey[] = ['RSP', 'LND'];
 
@@ -253,7 +254,7 @@ export function LguPage() {
                 <TableRow key={lgu.id}>
                   <TableCell>
                     {lgu.logo ? (
-                      <img src={lgu.logo} alt={lgu.name} className="h-8 w-8 rounded-full object-cover border" />
+                      <img src={assetUrl(lgu.logo)} alt={lgu.name} className="h-8 w-8 rounded-full object-cover border" />
                     ) : (
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 border border-emerald-200">
                         <Shield className="h-4 w-4 text-emerald-600" />
