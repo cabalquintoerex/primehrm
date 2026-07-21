@@ -123,7 +123,7 @@ export function LoginPage() {
           <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-teal-200/30 blur-3xl" />
         </div>
 
-        <div className="relative z-10 flex items-center justify-center min-h-screen lg:min-h-0 lg:h-full px-8 py-12">
+        <div className="relative z-10 flex items-start justify-center min-h-screen pt-16 pb-12 lg:items-center lg:min-h-0 lg:h-full lg:px-8 lg:py-12 px-8">
           <div className="w-full max-w-md text-center">
             {/* LGU Logo & Name — large and prominent (for LGU login) */}
             {slug && lgu && (
