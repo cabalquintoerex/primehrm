@@ -1513,3 +1513,34 @@ Side benefit: opening a protected URL in a fresh tab now lands on the LGU's bran
 ### 18D — LGU logo rounded on the branded login
 - [x] `rounded-2xl` → `rounded-full` on both the uploaded-logo `<img>` and the Shield fallback,
   matching the module launcher
+
+---
+
+## Phase 19: Production Deployment — COMPLETED (2026-07-21)
+
+**Live at https://apps.cebu.gov.ph/llcprime.** Full runbook + as-built record in
+`_Claude_To_Read/Deployment.md`; deploy artifacts in `deploy/`.
+
+- [x] Sub-path support driven by `VITE_BASE_PATH` (Vite base, router basename, axios baseURL,
+  `lib/basePath.ts` for `/uploads` assets + real anchors) — local dev unchanged at `/`
+- [x] Server: `trust proxy`; env-driven `COOKIE_PATH=/llcprime` + `COOKIE_SECURE`
+- [x] Deployed on shared Ubuntu 25.04 box (Apache 2.4.63, MySQL 8.4) alongside two **live** PHP
+  apps (`/access` CodeIgniter, `/prime` Laravel) — fully isolated: own dir, `/llcprime` URL,
+  `llcprime` DB, port 5010, additive `conf-available/llcprime.conf` (no edit to live vhosts)
+- [x] First Node-runtime app on the box — installed Node 20.18.1 (distro); `systemd` service
+  `llcprime-api` as `www-data`
+- [x] HTTPS via the existing Let's Encrypt cert; secure cookies working
+
+### Fixes surfaced by the real build/deploy (committed)
+- **`suggestion-input.tsx` ref types** — `tsc -b && vite build` (the real script) aborted on two
+  read-only-ref errors that `vite build` alone had hidden. **Lesson: build with `npm run build`.**
+- `*.tsbuildinfo` untracked + gitignored (a `tsc -b` artifact broke `git pull`)
+- systemd unit drops `EnvironmentFile` (dotenv parses the quoted `DATABASE_URL`)
+- Discovery lesson: `grep -R` (not `-r`) for `sites-enabled` symlinks — `-r` first hid the HTTPS vhost
+
+### Open items
+- **`brylle` access not locked down** — user is in `sudo` **and** `www-data`; with sudo, file perms
+  are deterrence only, not isolation. Deferred (operator changed brylle's password). See Deployment.md.
+- Redeploy runs as root → re-apply `.env`/`uploads` perms after `git pull`.
+- Deployed from branch `feat/rsp-appointment-forms-and-single-lgu-seed`; merge to `main` when ready.
+
