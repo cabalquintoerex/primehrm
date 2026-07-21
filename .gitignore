@@ -32,3 +32,6 @@ uploads/
 
 # Temp
 .tmp/
+
+# TypeScript incremental build info (machine-specific)
+*.tsbuildinfo
