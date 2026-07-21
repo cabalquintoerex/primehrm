@@ -161,6 +161,13 @@ const navItems: NavItem[] = [
     module: 'ADMIN',
   },
   {
+    title: 'HRMPSB Signatories',
+    href: '/admin/psb-members',
+    icon: Users,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'ADMIN',
+  },
+  {
     title: 'Audit Logs',
     href: '/admin/audit-logs',
     icon: ScrollText,
@@ -180,6 +187,13 @@ const navItems: NavItem[] = [
     title: 'Personal Data Sheet',
     href: '/applicant/pds',
     icon: FileText,
+    roles: ['APPLICANT'],
+    module: null,
+  },
+  {
+    title: 'Work Experience Sheet',
+    href: '/applicant/wes',
+    icon: Briefcase,
     roles: ['APPLICANT'],
     module: null,
   },

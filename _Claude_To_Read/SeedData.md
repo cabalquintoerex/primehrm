@@ -10,9 +10,16 @@ Quick reference for the seed data structure. Use this when adding new seed data 
 trainingParticipant → training → finalRequirement → appointment →
 assessmentScore → interviewScheduleApplicant → interviewSchedule →
 applicationDocument → application → personalDataSheet → workExperienceSheet →
+assessmentGroup (factors cascade) →
 positionDocumentRequirement → position → positionCatalogRequirement → positionCatalog →
 publication → auditLog → user → department → lgu
 ```
+
+> **WES shape (fixed in Phase 18):** seeded `workExperienceSheet` rows now use the current shape —
+> `{ entries: [{ duration, position, officeUnit, immediateSupervisor, agencyAndLocation,
+> accomplishments[], summaryOfDuties }] }`. They previously carried the retired PDS-Section-V shape,
+> which **crashed** the WES page (`accomplishments` was undefined and the render called `.map()` on
+> it). The page now normalises whatever it loads, so legacy rows degrade to blank fields instead.
 
 > **Model note (Phase 10):** Each seeded position is created by the `makePosition()` helper, which
 > makes a **PositionCatalog** master (the reusable definition, the "Positions" module) **and** a
@@ -23,29 +30,25 @@ publication → auditLog → user → department → lgu
 
 ## Existing Seed Data
 
-### LGUs (4)
+### LGUs (1) — Phase 18
 | Variable | Name | Slug | Enabled Modules |
 |----------|------|------|-----------------|
-| `lgu` | City of Cebu | `cebu-city` | RSP, L&D |
-| `mandaue` | City of Mandaue | `mandaue-city` | RSP only (L&D disabled — licensing demo) |
 | `lapulapu` | City of Lapu-Lapu | `lapu-lapu-city` | RSP, L&D |
-| `cebuProvince` | Province of Cebu | `cebu-province` | RSP, L&D |
 
-### Departments (Cebu City — 5)
-Human Resource Office, Engineering Office, Treasury Office, Health Department, Social Welfare Office
+> **Phase 18:** Cebu City, Mandaue, and Cebu Province were removed from the seed entirely, along
+> with Cebu City's whole pipeline. One consequence: **the per-LGU module licensing demo is gone** —
+> Mandaue was the RSP-only example. The feature still works; nothing seeded exercises it.
+
+### Departments (Lapu-Lapu — 5)
+Human Resource Office, Engineering Office, Treasury Office, Tourism Office, Health Office
 
 ### Users
 | Variable | Username | Role | LGU | Dept |
 |----------|----------|------|-----|------|
 | `superAdmin` | superadmin | SUPER_ADMIN | — | — |
-| `hrAdmin` | cebucityhr | LGU_HR_ADMIN | Cebu City | — |
-| `officeAdmin` | cebucityeng | LGU_OFFICE_ADMIN | Cebu City | Engineering |
-| `healthAdmin` | cebucityhealth | LGU_OFFICE_ADMIN | Cebu City | Health |
-| `treasuryAdminUser` | cebucitytreasury | LGU_OFFICE_ADMIN | Cebu City | Treasury |
-| (unnamed) | mandauehr | LGU_HR_ADMIN | Mandaue | — |
-| (unnamed) | lapulapuhr | LGU_HR_ADMIN | Lapu-Lapu | — |
-| (unnamed) | lapulapueng | LGU_OFFICE_ADMIN | Lapu-Lapu | Engineering |
-| (unnamed) | cebuprovhr | LGU_HR_ADMIN | Cebu Province | — |
+| `llHrAdmin` | lapulapuhr | LGU_HR_ADMIN | Lapu-Lapu | — |
+| `llOfficeAdmin` | lapulapueng | LGU_OFFICE_ADMIN | Lapu-Lapu | Engineering |
+| (unnamed) | lapulaputourism | LGU_OFFICE_ADMIN | Lapu-Lapu | Tourism |
 | `applicant` | juandelacruz | APPLICANT | — | — |
 | `applicant2` | mariagarcia | APPLICANT | — | — |
 | `applicant3` | robertosantos | APPLICANT | — | — |
@@ -55,7 +58,7 @@ Human Resource Office, Engineering Office, Treasury Office, Health Department, S
 
 ### Per-User Module Access (`moduleAccess`)
 Deny-by-default (null = no modules). Seed sets an explicit grant on every LGU staff user:
-- HR admins: `["RSP","LND","ADMIN"]` — except `mandauehr` = `["RSP","ADMIN"]` (Mandaue has no L&D license)
+- HR admin (`lapulapuhr`): `["RSP","LND","ADMIN"]`
 - Office admins: `["RSP"]` (all they can be granted — role gates the rest)
 - Super admin & applicants: null (they ignore per-user grants)
 
@@ -112,14 +115,39 @@ Each catalog master and each instance has 7 default document requirements (Lette
 | `interview2` | pos2 | 2026-02-10 | Conference Room B | Maria ✓ |
 
 ### Assessment Scores (4)
-| Application | Position | Total | Rank |
-|-------------|----------|-------|------|
-| app1Juan | pos1 | 97.00 | 1st |
-| app1Roberto | pos1 | 91.50 | 2nd |
-| app1Pedro | pos1 | 82.50 | 3rd |
-| app2Maria | pos2 | 102.50 | 1st |
+| Application | Position | Rank |
+|-------------|----------|------|
+| app1Juan | pos1 | 1st |
+| app1Roberto | pos1 | 2nd |
+| app1Pedro | pos1 | 3rd |
+| app2Maria | pos2 | 1st |
 
-Score breakdown per criteria: educationScore, trainingScore, experienceScore, performanceScore, psychosocialScore, potentialScore, interviewScore.
+> **Phase 13 change:** the fixed 7 score columns are gone. Assessments are now created with the
+> `makeAssessment()` helper, which snapshots the factor template onto the position (via
+> `ensureAssessmentTemplate()`), stores ratings as **percentages keyed by factor id** in
+> `factorScores`, and computes `totalScore` with the group/weight formula. Totals are therefore
+> capped at 100 — the old seeded totals (97.00, 102.50) no longer apply.
+
+### Pattern: New Assessment
+```typescript
+await makeAssessment({
+  applicationId: app1Juan.id,
+  positionId: pos1.id,
+  lguId: lgu.id,
+  ratings: {
+    'PERFORMANCE': 95,
+    'EDUCATION': 92,
+    'Relevant TRAINING': 88,
+    'Relevant EXPERIENCE': 95,
+    'PSYCHO-SOCIAL ATTRIBUTES & POTENTIAL': 90,
+    'OUTSTANDING ACCOMPLISHMENTS': 80,
+  },
+  remarks: 'Strong candidate',
+  scoredBy: hrAdmin.id,
+});
+```
+Ratings are keyed by **factor label** and must match `ASSESSMENT_TEMPLATE` in the seed (which
+mirrors `server/src/config/assessmentDefaults.ts`). A missing label scores 0.
 
 ### Appointments (2)
 | Variable | Application | Position | Status | Requirements |
@@ -146,6 +174,26 @@ Uses correct controller action names and lowercase entity names matching the rea
 - **Training** (`entity: 'training'`): `CREATE`, `UPDATE`
 
 All attributed to the correct actor (hrAdmin, officeAdmin, healthAdmin, or applicant).
+
+---
+
+---
+
+## Lapu-Lapu Signatories
+
+### HRMPSB Signatories (7)
+| Type | Name | Designation | Role |
+|------|------|-------------|------|
+| PSB_MEMBER | ROSALINDA M. ABELLANA | City Mayor | Chairperson, HRMPSB |
+| PSB_MEMBER | ATTY. FERDINAND L. YBAÑEZ | City Administrator | Vice Chairperson, HRMPSB |
+| PSB_MEMBER | ATTY. MARICEL P. CUIZON | City Legal Officer | Member, HRMPSB |
+| PSB_MEMBER | ENGR. ROGELIO T. SUMALINOG | City Engineer | Member, HRMPSB |
+| PSB_MEMBER | DR. CARMELITA V. LOZADA | City Health Officer | Member, HRMPSB |
+| PSB_MEMBER | BENJAMIN R. PATALINGHUG | Administrative Officer IV | Member, HRMPSB-PEACE Representative |
+| PREPARED_BY | GLORIA S. MENDOZA | Human Resource Management Officer IV | Secretariat, HRMPSB |
+
+> **Placeholder names** — the designations are genuine city-level posts, but the names are invented,
+> not actual serving officials. Lapu-Lapu is now the only seeded LGU (Phase 18).
 
 ---
 

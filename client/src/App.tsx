@@ -23,6 +23,8 @@ const RegisterPage = lazy(() => import('@/features/auth/RegisterPage').then(m =>
 const ApplicantDashboard = lazy(() => import('@/features/apply/ApplicantDashboard').then(m => ({ default: m.ApplicantDashboard })));
 const MyApplicationsPage = lazy(() => import('@/features/apply/MyApplicationsPage').then(m => ({ default: m.MyApplicationsPage })));
 const PDSFormPage = lazy(() => import('@/features/pds/PDSFormPage').then(m => ({ default: m.PDSFormPage })));
+const PsbMemberPage = lazy(() => import('@/features/psb/PsbMemberPage').then(m => ({ default: m.PsbMemberPage })));
+const WESFormPage = lazy(() => import('@/features/wes/WESFormPage').then(m => ({ default: m.WESFormPage })));
 const ApplyPage = lazy(() => import('@/features/apply/ApplyPage').then(m => ({ default: m.ApplyPage })));
 const ApplicationsPage = lazy(() => import('@/features/applications/ApplicationsPage').then(m => ({ default: m.ApplicationsPage })));
 const ApplicationDetailPage = lazy(() => import('@/features/applications/ApplicationDetailPage').then(m => ({ default: m.ApplicationDetailPage })));
@@ -123,6 +125,7 @@ function App() {
               <Route path="dashboard" element={<ApplicantDashboard />} />
               <Route path="applications" element={<MyApplicationsPage />} />
               <Route path="pds" element={<PDSFormPage />} />
+              <Route path="wes" element={<WESFormPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="process-flow" element={<ProcessFlowPage />} />
             </Route>
@@ -254,6 +257,10 @@ function App() {
                 element={<ProtectedRoute allowedRoles={RSP_ADMINS}><UserPage /></ProtectedRoute>}
               />
               <Route
+                path="psb-members"
+                element={<ProtectedRoute allowedRoles={RSP_ADMINS}><PsbMemberPage /></ProtectedRoute>}
+              />
+              <Route
                 path="audit-logs"
                 element={<ProtectedRoute allowedRoles={RSP_ADMINS}><AuditLogPage /></ProtectedRoute>}
               />
@@ -278,7 +285,7 @@ function App() {
           </Routes>
         </Suspense>
       </BrowserRouter>
-      <Toaster position="top-right" richColors />
+      <Toaster position="bottom-right" richColors closeButton />
     </QueryClientProvider>
   );
 }

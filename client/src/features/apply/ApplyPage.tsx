@@ -13,12 +13,15 @@ import type { Position, PositionDocumentRequirement, PDSData } from '@/types';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 
-// Keywords that indicate a PDS requirement (auto-fulfilled by the system)
+// Keywords that indicate a PDS requirement (auto-fulfilled by the system).
+// Note: the CSC default requirement is labelled "Personal Data Sheet with Work Experience
+// Sheet" — a single line item covering both — so the label mentioning work experience must
+// NOT disqualify it. A standalone WES requirement matches neither keyword and stays manual.
 const PDS_KEYWORDS = ['personal data sheet', 'pds'];
 
 function isPdsRequirement(label: string): boolean {
   const lower = label.toLowerCase();
-  return PDS_KEYWORDS.some(kw => lower.includes(kw)) && !lower.includes('work experience');
+  return PDS_KEYWORDS.some(kw => lower.includes(kw));
 }
 
 export function ApplyPage() {
@@ -81,7 +84,7 @@ export function ApplyPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-applications'] });
       toast.success('Application submitted successfully!');
-      navigate('/applicant/dashboard');
+      navigate('/applicant/applications');
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to submit application');

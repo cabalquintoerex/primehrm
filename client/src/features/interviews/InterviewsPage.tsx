@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { InterviewSchedule, InterviewStatus, Position, Application, PaginatedResponse } from '@/types';
@@ -122,6 +122,11 @@ export function InterviewsPage() {
       toast.error('Position and schedule date are required');
       return;
     }
+    // The server rejects an empty roster — catch it here so the message is actionable.
+    if (selectedApplicationIds.length === 0) {
+      toast.error('Select at least one applicant for this interview');
+      return;
+    }
     createMutation.mutate({
       positionId: Number(formPositionId),
       scheduleDate: new Date(formDate).toISOString(),
@@ -192,18 +197,19 @@ export function InterviewsPage() {
               <TableHead>Venue</TableHead>
               <TableHead>Applicants</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-16 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : !interviews || interviews.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No interview schedules found
                 </TableCell>
               </TableRow>
@@ -231,6 +237,21 @@ export function InterviewsPage() {
                   <TableCell>{interview._count?.applicants ?? interview.applicants?.length ?? 0}</TableCell>
                   <TableCell>
                     <InterviewStatusBadge status={interview.status} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="View interview"
+                      // The row is clickable too; stop it firing twice.
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/rsp/interviews/${interview.id}`);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -318,10 +339,11 @@ export function InterviewsPage() {
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"
               onClick={handleCreate}
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || selectedApplicationIds.length === 0}
             >
               {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Schedule
+              {selectedApplicationIds.length > 0 && ` (${selectedApplicationIds.length})`}
             </Button>
           </DialogFooter>
         </DialogContent>

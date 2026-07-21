@@ -24,6 +24,7 @@ import publicationRoutes from './routes/publication.routes';
 import positionCatalogRoutes from './routes/positionCatalog.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import reportRoutes from './routes/report.routes';
+import psbMemberRoutes from './routes/psbMember.routes';
 import auditLogRoutes from './routes/auditLog.routes';
 import { errorHandler } from './middleware/errorHandler';
 import prisma from './config/database';
@@ -61,6 +62,7 @@ app.use('/api/publications', publicationRoutes);
 app.use('/api/position-catalog', positionCatalogRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/psb-members', psbMemberRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 
 // Health check

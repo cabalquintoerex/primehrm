@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '@/services/api';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -11,8 +12,11 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, FileCheck, Clock, CheckCircle2, Eye } from 'lucide-react';
+import { Loader2, FileCheck, Clock, CheckCircle2, Eye, FileDown, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { generateAppointmentTransmittal } from '@/lib/generateAppointmentTransmittal';
+import { generateAppointmentTransmittalExcel } from '@/lib/generateAppointmentTransmittalExcel';
 import type { Appointment, Position } from '@/types';
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -58,11 +62,118 @@ export function AppointmentsPage() {
   const appointments: Appointment[] = response?.data || [];
   const meta = response?.meta;
 
+  const { user } = useAuthStore();
+  const [transmittalFormat, setTransmittalFormat] = useState<'pdf' | 'excel' | null>(null);
+
+  // CS Form No. 1 covers appointees whose final requirements are all verified — that is exactly
+  // what COMPLETED means, so the transmittal is built from completed appointments only.
+  const transmittalMutation = useMutation({
+    mutationFn: async (fileFormat: 'pdf' | 'excel') => {
+      setTransmittalFormat(fileFormat);
+      const { data } = await api.get('/appointments', {
+        params: { status: 'COMPLETED', limit: 100 },
+      });
+      const completed: Appointment[] = data.data || [];
+      if (completed.length === 0) {
+        throw new Error('NO_COMPLETED');
+      }
+
+      const mmddyyyy = (value?: string | null) =>
+        value ? format(new Date(value), 'MM/dd/yyyy') : '';
+
+      const appointees = await Promise.all(
+        completed.map(async (appt) => {
+          const applicant = appt.application?.applicant;
+          let pds: any = {};
+          try {
+            const { data: detail } = await api.get(`/applications/${appt.applicationId}`);
+            pds = detail.data?.personalDataSheet?.data ?? {};
+          } catch {
+            // Fall back to the account name — the form still prints, just without middle name
+          }
+          const position = appt.position;
+          const publicationPeriod =
+            position?.openDate && position?.closeDate
+              ? `${mmddyyyy(position.openDate)} to ${mmddyyyy(position.closeDate)}`
+              : '';
+          return {
+            lastName: pds.surname || applicant?.lastName || '',
+            firstName: pds.firstName || applicant?.firstName || '',
+            nameExtension: pds.nameExtension || '',
+            middleName: pds.middleName || '',
+            positionTitle: position?.title || '',
+            salaryGrade: position?.salaryGrade ?? null,
+            employmentStatus: '',
+            periodOfEmployment: '',
+            natureOfAppointment: '',
+            dateOfIssuance: mmddyyyy(appt.appointmentDate),
+            publicationPeriod,
+            publicationMode: '',
+          };
+        })
+      );
+
+      const payload = {
+        agencyName: user?.lgu?.name || '',
+        cscFieldOffice: '',
+        hrmoName: '',
+        appointees,
+      };
+
+      if (fileFormat === 'excel') {
+        await generateAppointmentTransmittalExcel(payload);
+      } else {
+        generateAppointmentTransmittal(payload);
+      }
+    },
+    onSettled: () => setTransmittalFormat(null),
+    onError: (error: any) => {
+      if (error instanceof Error && error.message === 'NO_COMPLETED') {
+        toast.error('No appointments have all requirements verified yet');
+        return;
+      }
+      toast.error(error.response?.data?.message || 'Failed to generate the transmittal form');
+    },
+  });
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-bold tracking-tight">Appointments</h1>
-        <p className="text-sm text-muted-foreground">Manage appointments, generate forms, and verify final requirements.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold tracking-tight">Appointments</h1>
+          <p className="text-sm text-muted-foreground">Manage appointments, generate forms, and verify final requirements.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">CS Form No. 1</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => transmittalMutation.mutate('excel')}
+            disabled={transmittalMutation.isPending}
+            title="Excel — leaves the manually-filled fields empty and typeable"
+          >
+            {transmittalMutation.isPending && transmittalFormat === 'excel' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+            )}
+            Excel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => transmittalMutation.mutate('pdf')}
+            disabled={transmittalMutation.isPending}
+            title="PDF — print-ready"
+          >
+            {transmittalMutation.isPending && transmittalFormat === 'pdf' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-2 h-4 w-4" />
+            )}
+            PDF
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

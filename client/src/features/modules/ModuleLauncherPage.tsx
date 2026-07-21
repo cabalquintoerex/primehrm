@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useModuleAccess } from '@/hooks/useActiveModule';
-import { MODULES, type ModuleDef } from '@/lib/modules';
+import { MODULES, logoutDestination, type ModuleDef } from '@/lib/modules';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -10,8 +10,26 @@ import { Shield, ArrowRight, Settings, LogOut, Lock } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 
+/** Per-module card tints. Mirrors the `pillars` treatment on LoginPage so the two screens match. */
+const CARD_STYLES: Record<string, { card: string; iconBg: string; title: string; name: string; desc: string }> = {
+  RSP: {
+    card: 'bg-gradient-to-br from-emerald-100 to-emerald-50 ring-emerald-200 hover:ring-emerald-400 hover:shadow-emerald-600/15',
+    iconBg: 'bg-emerald-600 shadow-emerald-600/25',
+    title: 'text-emerald-950',
+    name: 'text-emerald-700',
+    desc: 'text-emerald-800/70',
+  },
+  LND: {
+    card: 'bg-gradient-to-br from-teal-100 to-teal-50 ring-teal-200 hover:ring-teal-400 hover:shadow-teal-600/15',
+    iconBg: 'bg-teal-600 shadow-teal-600/25',
+    title: 'text-teal-950',
+    name: 'text-teal-700',
+    desc: 'text-teal-800/70',
+  },
+};
+
 export function ModuleLauncherPage() {
-  const { user, logout, moduleMemory, rememberModule, forgetModule } = useAuthStore();
+  const { user, logout, moduleMemory, rememberModule, forgetModule, lastLguSlug } = useAuthStore();
   const { launcherModules, canAccess, enabledModules } = useModuleAccess();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -37,6 +55,8 @@ export function ModuleLauncherPage() {
   };
 
   const handleLogout = async () => {
+    // Resolve the destination before clearing the store — afterwards the LGU is gone.
+    const destination = logoutDestination(user, lastLguSlug);
     try {
       await api.post('/auth/logout');
     } catch {
@@ -44,48 +64,56 @@ export function ModuleLauncherPage() {
     }
     queryClient.clear();
     logout();
-    navigate('/');
+    navigate(destination);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 flex flex-col">
+    <div className="relative min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex flex-col overflow-hidden">
+      {/* Background accents */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-emerald-200/40 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-teal-200/30 blur-3xl" />
+      </div>
+
       {/* Top bar */}
-      <header className="flex items-center justify-between px-4 py-4 md:px-8">
-        <div className="flex items-center gap-2 text-white">
-          <Shield className="h-5 w-5" />
+      <header className="relative z-10 flex items-center justify-between px-4 py-4 md:px-8">
+        <div className="flex items-center gap-2 text-gray-900">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 shadow-md shadow-emerald-600/20">
+            <Shield className="h-4 w-4 text-white" />
+          </div>
           <span className="text-sm font-bold tracking-widest">
-            PRIME-<span className="text-emerald-200">HRM</span>
+            PRIME-<span className="text-emerald-600">HRM</span>
           </span>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleLogout}
-          className="text-white/80 hover:text-white hover:bg-white/10"
+          className="text-gray-600 hover:text-gray-900 hover:bg-emerald-100/60"
         >
           <LogOut className="mr-2 h-4 w-4" />
           Sign out
         </Button>
       </header>
 
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-8">
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-8">
         {/* LGU branding */}
         <div className="flex flex-col items-center text-center mb-10">
           {user.lgu?.logo ? (
             <img
               src={user.lgu.logo}
               alt={user.lgu.name}
-              className="h-20 w-20 rounded-2xl object-cover ring-2 ring-white/20 mb-4"
+              className="h-20 w-20 rounded-full object-cover bg-white ring-2 ring-emerald-200 shadow-md shadow-emerald-900/5 mb-4"
             />
           ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 backdrop-blur ring-2 ring-white/20 mb-4">
-              <Shield className="h-10 w-10 text-white" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white ring-2 ring-emerald-200 shadow-md shadow-emerald-900/5 mb-4">
+              <Shield className="h-10 w-10 text-emerald-600" />
             </div>
           )}
           {user.lgu && (
-            <h1 className="text-2xl md:text-3xl font-bold text-white">{user.lgu.name}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{user.lgu.name}</h1>
           )}
-          <p className="mt-2 text-sm text-emerald-100">
+          <p className="mt-2 text-sm text-gray-600">
             Welcome back, {user.firstName}. Choose a module to continue.
           </p>
         </div>
@@ -104,6 +132,8 @@ export function ModuleLauncherPage() {
                 ? 'Not enabled for this LGU'
                 : 'Not assigned to your account';
 
+            const style = CARD_STYLES[mod.key];
+
             return (
               <button
                 key={mod.key}
@@ -113,28 +143,36 @@ export function ModuleLauncherPage() {
                 aria-label={available ? `Open ${mod.name}` : `${mod.name} is not available`}
                 className={
                   available
-                    ? 'group relative flex flex-col rounded-2xl bg-white/10 p-6 text-left ring-1 ring-white/20 backdrop-blur transition hover:bg-white/15 hover:ring-white/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-white'
-                    : 'relative flex cursor-not-allowed flex-col rounded-2xl bg-white/5 p-6 text-left ring-1 ring-white/10 backdrop-blur opacity-60'
+                    ? `group relative flex flex-col rounded-2xl p-6 text-left ring-1 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${style.card}`
+                    : 'relative flex cursor-not-allowed flex-col rounded-2xl bg-gray-100/70 p-6 text-left ring-1 ring-gray-200'
                 }
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-white">
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm ${
+                    available ? `text-white ${style.iconBg}` : 'bg-gray-300 text-gray-600'
+                  }`}
+                >
                   {available ? <Icon className="h-6 w-6" /> : <Lock className="h-5 w-5" />}
                 </div>
 
-                <h2 className="mt-4 text-lg font-bold text-white">{mod.label}</h2>
-                <p className="text-sm font-medium text-emerald-100">{mod.name}</p>
-                <p className="mt-3 flex-1 text-sm leading-relaxed text-emerald-200/80">
+                <h2 className={`mt-4 text-lg font-bold ${available ? style.title : 'text-gray-500'}`}>
+                  {mod.label}
+                </h2>
+                <p className={`text-sm font-medium ${available ? style.name : 'text-gray-400'}`}>
+                  {mod.name}
+                </p>
+                <p className={`mt-3 flex-1 text-sm leading-relaxed ${available ? style.desc : 'text-gray-400'}`}>
                   {mod.description}
                 </p>
 
-                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold">
                   {available ? (
-                    <>
+                    <span className={`inline-flex items-center gap-1.5 ${style.title}`}>
                       Enter
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                    </>
+                    </span>
                   ) : (
-                    <span className="text-emerald-200/70">{unavailableReason}</span>
+                    <span className="text-gray-500">{unavailableReason}</span>
                   )}
                 </span>
               </button>
@@ -146,7 +184,7 @@ export function ModuleLauncherPage() {
         {launcherModules.length > 0 && (
           <div className="mt-8 flex items-center gap-3">
             <Switch id="remember-module" checked={shouldRemember} onCheckedChange={onToggleRemember} />
-            <Label htmlFor="remember-module" className="text-sm text-emerald-100 cursor-pointer">
+            <Label htmlFor="remember-module" className="text-sm text-gray-600 cursor-pointer">
               Remember my choice and skip this screen next time
             </Label>
           </div>
@@ -156,7 +194,7 @@ export function ModuleLauncherPage() {
         {canAccess('ADMIN') && (
           <Link
             to={MODULES.ADMIN.basePath}
-            className="mt-6 inline-flex items-center gap-2 text-sm text-emerald-200/80 hover:text-white transition-colors"
+            className="mt-6 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-emerald-700 transition-colors"
           >
             <Settings className="h-4 w-4" />
             Administration

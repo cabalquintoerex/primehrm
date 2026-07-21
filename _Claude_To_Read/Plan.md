@@ -70,7 +70,7 @@ Post-login, users land on the module launcher and pick where to go.
 |--------|------|-------|
 | RSP | `/rsp` | `dashboard`, `positions`, `publications`, `publications/:id`, `applications`, `applications/:id`, `interviews`, `interviews/:id`, `assessments/:positionId`, `selection`, `appointments`, `appointments/:id`, `reports`, `profile`, `process-flow` |
 | L&D | `/lnd` | `dashboard`, `training`, `training/:id`, `reports`, `profile` |
-| Administration | `/admin` | `dashboard` (super admin), `lgus`, `departments`, `users`, `audit-logs`, `profile` |
+| Administration | `/admin` | `dashboard` (super admin), `lgus`, `departments`, `users`, `psb-members`, `audit-logs`, `profile` |
 
 ### Module Access Rules
 
@@ -312,20 +312,52 @@ primehrm/
 | notified | BOOLEAN | Email sent? |
 | attended | BOOLEAN NULL | |
 
+#### psb_members
+HRMPSB signatories for an LGU — the signature block on the Comparative Assessment Form.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INT PK | |
+| lgu_id | FK | |
+| name | VARCHAR | |
+| designation | VARCHAR NULL | Government position, e.g. `Governor` |
+| psb_role | VARCHAR NULL | Board role, e.g. `Chairperson, HRMPSB` |
+| type | ENUM | `PSB_MEMBER`, `PREPARED_BY` |
+| sort_order | INT | Left-to-right print order in the signature block |
+| is_active | BOOLEAN | Retire a member without deleting history |
+
+#### assessment_groups
+Factor group on the comparative assessment (e.g. `II - ETE [40]`). See Status.md Phase 13.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INT PK | |
+| lgu_id | FK | |
+| position_id | FK NULL | **NULL = the LGU's reusable default template; set = snapshot frozen onto that position** |
+| code | VARCHAR(16) | `I`, `II`, … |
+| label | VARCHAR NULL | e.g. `ETE` |
+| points | DECIMAL(6,2) | Points the group contributes (groups sum to 100) |
+| sort_order | INT | |
+
+#### assessment_factors
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INT PK | |
+| group_id | FK | Cascade delete |
+| label | VARCHAR | e.g. `EDUCATION` |
+| max_weight | DECIMAL(6,4) | Fraction within the group; a group's factors sum to 1 |
+| sort_order | INT | |
+
+> A group with **more than one factor** renders a subtotal on its header.
+
 #### assessment_scores
 | Column | Type | Notes |
 |--------|------|-------|
 | id | INT PK | |
 | application_id | FK | |
 | position_id | FK | |
-| education_score | DECIMAL(5,2) NULL | |
-| training_score | DECIMAL(5,2) NULL | |
-| experience_score | DECIMAL(5,2) NULL | |
-| performance_score | DECIMAL(5,2) NULL | |
-| psychosocial_score | DECIMAL(5,2) NULL | |
-| potential_score | DECIMAL(5,2) NULL | |
-| interview_score | DECIMAL(5,2) NULL | |
-| total_score | DECIMAL(5,2) NULL | Computed |
+| factor_scores | JSON NULL | `{ "<factorId>": ratingPercent }` — rating per factor, 0–100 |
+| total_score | DECIMAL(6,2) NULL | **Always computed server-side** from the position's template |
 | remarks | TEXT NULL | |
 | scored_by | FK | |
 
@@ -484,8 +516,16 @@ primehrm/
 | POST | `/api/interviews` | Schedule interview | LGU_HR_ADMIN |
 | PUT | `/api/interviews/:id` | Update schedule | LGU_HR_ADMIN |
 | PUT | `/api/interviews/:id/complete` | Mark completed | LGU_HR_ADMIN |
-| POST | `/api/assessments` | Input scores | LGU_HR_ADMIN |
+| POST | `/api/assessments` | Input scores (`factorScores`; total computed server-side) | LGU_HR_ADMIN |
 | GET | `/api/assessments/position/:id` | Scores for position | LGU_HR_ADMIN |
+| GET | `/api/psb-members` | List signatories (`?lguId=` for super admin, `?type=`) | Authenticated LGU admins |
+| POST | `/api/psb-members` | Add signatory | LGU_HR_ADMIN |
+| PUT | `/api/psb-members/:id` | Update signatory | LGU_HR_ADMIN |
+| DELETE | `/api/psb-members/:id` | Remove signatory | LGU_HR_ADMIN |
+| GET | `/api/assessments/template/lgu` | LGU default factor template (seeded on first read) | LGU_HR_ADMIN |
+| PUT | `/api/assessments/template/lgu` | Replace the LGU default template | LGU_HR_ADMIN |
+| GET | `/api/assessments/template/position/:id` | Position template (snapshots the LGU default on first read) | LGU_HR_ADMIN |
+| PUT | `/api/assessments/template/position/:id` | Replace a position's template (ratings carried over by label) | LGU_HR_ADMIN |
 | GET | `/api/certificates/position/:id` | Generate certificate | LGU_HR_ADMIN |
 
 ### Appointment (Phase 6)
@@ -547,12 +587,13 @@ primehrm/
 - [ ] Health check endpoint
 - [ ] Audit logging utility
 
-**Demo Accounts**:
+**Demo Accounts** (Phase 18 — seed is Lapu-Lapu only):
 | Role | Username | Password |
 |------|----------|----------|
 | Super Admin | superadmin | admin123 |
-| HR Admin | cebucityhr | hradmin123 |
-| Office Admin | cebucityeng | office123 |
+| HR Admin | lapulapuhr | hradmin123 |
+| Office Admin | lapulapueng | office123 |
+| Applicant | juandelacruz | applicant123 |
 
 ### Phase 2: RSP — Job Posting & Public Careers Portal
 **Goal**: HR can post positions, public can browse them
@@ -595,7 +636,7 @@ primehrm/
 - [x] Online PDS form (CS Form 212 — multi-step wizard), filled once and stored in applicant profile
 - [x] Sections: Personal Info, Family Background, Educational Background, Civil Service Eligibility, Work Experience, Voluntary Work, Learning & Development, Other Information (skills, recognitions, references)
 - [x] PDS form UX: numeric-only ID fields, salary formatting, tab order fixes
-- [ ] Work Experience Sheet form (CS Form 212 WES) — deferred (applicants upload manually if required by HR)
+- [x] Work Experience Sheet form (CS Form 212 Attachment) — standalone module at `/applicant/wes`, independent of PDS data
 - [x] PDS reusable across multiple applications, editable anytime
 
 #### Applicant Dashboard
@@ -630,17 +671,17 @@ primehrm/
 - [x] Auto status update (SHORTLISTED → FOR_INTERVIEW on assignment)
 - [x] Mark interview as completed with attendance tracking
 - [x] Interview cancellation
-- [x] Comparative assessment form — 7 criteria scoring (Education, Training, Experience, Performance, Psychosocial, Potential, Interview)
+- [x] Comparative assessment form — 7 criteria scoring (Education, Training, Experience, Performance, Psychosocial, Potential, Interview) — **superseded by Phase 13** (dynamic factor template)
 - [x] Auto-compute total scores & ranking (sorted by total desc)
 - [x] Qualify applicants (bulk INTERVIEWED → QUALIFIED)
 - [x] Head of agency selection (bulk QUALIFIED → SELECTED)
 - [ ] Email notifications to shortlisted applicants (Nodemailer) — deferred
-- [ ] Generate Certificate of Qualified Applicants (PDF) — deferred
+- [x] Generate Certificate of Qualified Applicants (PDF) — **done in Phase 15** (HRMPSB Certification, generated per position from the Selection module)
 
 ### Phase 6: RSP — Appointment & Onboarding
 **Goal**: Generate appointment documents, manage final requirements
 
-- [x] Generate Appointment Form (CS Form 33-B)
+- [x] Generate Appointment Form (CS Form 33-B) — **superseded in Phase 16 by CS Form 33-A**
 - [x] Generate Oath of Office (CS Form 32)
 - [x] Set final requirements for accepted applicants
 - [ ] Email final requirements to accepted applicants
@@ -651,9 +692,9 @@ primehrm/
 #### Appointment Document Annexes (To Do)
 - [ ] **ANNEX A** — DBM-CSC Form No. 1, Position Description Form (Revised 2017) — Fillable/Generate
 - [ ] **ANNEX B** — SS Porma Blg. 32, Narebisa 2025 — Panunumpa sa Katungkulan (Filipino Oath of Office) — Generate
-- [ ] **ANNEX C** — CS Form No. 33-A, Revised 2025 — Appointment Form (Regulated) — Generate
-- [ ] **ANNEX I** — CS Form No. 1, Revised 2025 — Appointment Transmittal and Action Form — Generate
-- [ ] **ANNEX L** — CS Form No. 4, Revised 2025 — Certification of Assumption to Duty — Generate
+- [x] **ANNEX C** — CS Form No. 33-A, Revised 2025 — Appointment Form (Regulated) — **done in Phase 16** (replaced CS Form 33-B)
+- [x] **ANNEX I** — CS Form No. 1, Revised 2025 — Appointment Transmittal and Action Form — **done in Phase 16** (PDF + Excel)
+- [x] **ANNEX L** — CS Form No. 4, Revised 2025 — Certification of Assumption to Duty — **done in Phase 16**
 
 ### Phase 7: Learning & Development — COMPLETED (Core)
 **Goal**: Training management, assignment, and monitoring
@@ -743,7 +784,7 @@ primehrm/
 - [x] `createLgu` / `updateLgu` accept + validate `enabledModules` (bad key → 400)
 - [x] `requireModule(key)` middleware; applied to training routes, `/dashboard/lnd`, `/reports/trainings`
 - [x] SUPER_ADMIN toggles RSP / L&D per LGU in LGU Management dialog (+ Modules table column)
-- [x] Seed: Mandaue = RSP only, others = both (demo of a disabled module)
+- [x] Seed: Mandaue = RSP only (demo of a disabled module) — **removed in Phase 18**, which reduced the seed to Lapu-Lapu only
 - [x] RSP left client-enforced (core module); middleware ready for RSP if ever needed
 
 #### Phase 9F — Per-user module access — COMPLETED
@@ -786,12 +827,12 @@ primehrm/
 
 ---
 
-## Demo Data (Seed)
+## Demo Data (Seed) — Phase 18
 
 - 1 Super Admin account
-- 1 Sample LGU (City of Cebu) with logo
-- 5 Sample departments
-- 1 HR Admin account
-- 1 Office Admin account
-- Sample positions (Phase 2)
-- Sample applicant with PDS (Phase 3)
+- **1 LGU: City of Lapu-Lapu** (Cebu City, Mandaue and Cebu Province were removed)
+- 5 departments, 1 HR admin, 2 office admins
+- 6 applicants with full PDS + WES
+- 13 positions across 4 publications
+- 12 applications covering **every status**, with the full audit trail
+- 3 interviews, 4 assessments, 2 appointments, 7 HRMPSB signatories, 3 trainings, 86 audit logs

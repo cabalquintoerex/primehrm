@@ -15,9 +15,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { ArrowLeft, Download, Loader2, ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { ApplicationHistoryTimeline } from './ApplicationHistoryTimeline';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import type { Application, ApplicationStatus, PersonalDataSheet, PDSData, ApplicationDocument, AssessmentScore } from '@/types';
+import type { Application, ApplicationStatus, PersonalDataSheet, PDSData, ApplicationDocument, AssessmentScore, AssessmentGroup } from '@/types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -38,6 +39,9 @@ const STATUS_CONFIG: Record<ApplicationStatus, { label: string; className: strin
 // Valid next statuses based on current status (HR Admin)
 const STATUS_TRANSITIONS: Partial<Record<ApplicationStatus, ApplicationStatus[]>> = {
   SUBMITTED: ['ENDORSED', 'REJECTED'],
+  // HR can shortlist too, not just the office admin — otherwise an office that hasn't screened
+  // yet leaves the applicant stranded, since only SHORTLISTED applicants can be interviewed.
+  ENDORSED: ['SHORTLISTED', 'REJECTED'],
   // SHORTLISTED → FOR_INTERVIEW is handled by the Interview module (assign to interview schedule)
   // FOR_INTERVIEW → INTERVIEWED is handled by the Interview module (mark attendance)
   INTERVIEWED: ['QUALIFIED', 'REJECTED'],
@@ -136,6 +140,16 @@ export function ApplicationDetailPage() {
     staleTime: 0,
   });
 
+  // Factor labels live on the position's template, so the score alone can't be rendered.
+  const { data: assessmentGroups } = useQuery<AssessmentGroup[]>({
+    queryKey: ['assessment-template', application?.positionId],
+    queryFn: async () => {
+      const { data } = await api.get(`/assessments/template/position/${application!.positionId}`);
+      return data.data || [];
+    },
+    enabled: !!application?.positionId && isHRAdmin,
+  });
+
   const hasAssessmentScore = assessmentScore && assessmentScore.totalScore != null;
 
   const statusMutation = useMutation({
@@ -146,6 +160,8 @@ export function ApplicationDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['application', id] });
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       queryClient.invalidateQueries({ queryKey: ['applications-stats'] });
+      // Without this the new entry wouldn't appear in the trail until a reload.
+      queryClient.invalidateQueries({ queryKey: ['application-history', Number(id)] });
       toast.success('Application status updated');
       setConfirmDialog({ open: false, status: null });
       setStatusNotes('');
@@ -262,6 +278,16 @@ export function ApplicationDetailPage() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Section 1b: Status audit trail */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Status History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ApplicationHistoryTimeline applicationId={application.id} />
         </CardContent>
       </Card>
 
@@ -501,22 +527,19 @@ export function ApplicationDetailPage() {
             {hasAssessmentScore ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Education', value: assessmentScore.educationScore },
-                    { label: 'Training', value: assessmentScore.trainingScore },
-                    { label: 'Experience', value: assessmentScore.experienceScore },
-                    { label: 'Performance', value: assessmentScore.performanceScore },
-                    { label: 'Psychosocial', value: assessmentScore.psychosocialScore },
-                    { label: 'Potential', value: assessmentScore.potentialScore },
-                    { label: 'Interview', value: assessmentScore.interviewScore },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-md border p-3 text-center">
-                      <p className="text-xs text-muted-foreground">{item.label}</p>
-                      <p className="text-lg font-bold text-gray-900">
-                        {item.value != null ? Number(item.value).toFixed(2) : '-'}
-                      </p>
-                    </div>
-                  ))}
+                  {/* Factors are per-position now, so the labels come from the position's template */}
+                  {(assessmentGroups ?? []).flatMap((group) =>
+                    group.factors.map((factor) => (
+                      <div key={factor.id} className="rounded-md border p-3 text-center">
+                        <p className="text-xs text-muted-foreground">{factor.label}</p>
+                        <p className="text-lg font-bold text-gray-900">
+                          {assessmentScore.factorScores?.[String(factor.id)] != null
+                            ? `${Number(assessmentScore.factorScores[String(factor.id)])}%`
+                            : '-'}
+                        </p>
+                      </div>
+                    ))
+                  )}
                   <div className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-center">
                     <p className="text-xs text-emerald-700 font-medium">Total Score</p>
                     <p className="text-lg font-bold text-emerald-700">

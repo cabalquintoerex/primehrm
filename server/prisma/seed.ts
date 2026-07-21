@@ -39,6 +39,9 @@ async function main() {
   await prisma.finalRequirement.deleteMany();
   await prisma.appointment.deleteMany();
   await prisma.assessmentScore.deleteMany();
+  // Factors cascade from groups; groups must go before positions and lgus.
+  await prisma.assessmentGroup.deleteMany();
+  await prisma.psbMember.deleteMany();
   await prisma.interviewScheduleApplicant.deleteMany();
   await prisma.interviewSchedule.deleteMany();
   await prisma.applicationDocument.deleteMany();
@@ -73,112 +76,6 @@ async function main() {
   });
   console.log('Created super admin:', superAdmin.email);
 
-  // Create sample LGU
-  const lgu = await prisma.lgu.upsert({
-    where: { slug: 'cebu-city' },
-    update: {},
-    create: {
-      name: 'City of Cebu',
-      slug: 'cebu-city',
-      address: 'Cebu City Hall, Osmena Blvd, Cebu City',
-      contactNumber: '(032) 255-3611',
-      email: 'hr@cebucity.gov.ph',
-      enabledModules: ['RSP', 'LND'],
-    },
-  });
-  console.log('Created LGU:', lgu.name);
-
-  // Create sample departments
-  const departments = ['Human Resource Office', 'Engineering Office', 'Treasury Office', 'Health Department', 'Social Welfare Office'];
-  for (const deptName of departments) {
-    await prisma.department.upsert({
-      where: { lguId_name: { lguId: lgu.id, name: deptName } },
-      update: {},
-      create: { name: deptName, lguId: lgu.id },
-    });
-  }
-  console.log('Created departments');
-
-  // Create LGU HR Admin
-  const hrPassword = await bcrypt.hash('hradmin123', 12);
-  const hrAdmin = await prisma.user.upsert({
-    where: { email: 'hr@cebucity.gov.ph' },
-    update: {},
-    create: {
-      email: 'hr@cebucity.gov.ph',
-      username: 'cebucityhr',
-      password: hrPassword,
-      firstName: 'HR',
-      lastName: 'Admin',
-      role: 'LGU_HR_ADMIN',
-      moduleAccess: ['RSP', 'LND', 'ADMIN'],
-      lguId: lgu.id,
-    },
-  });
-  console.log('Created HR Admin:', hrAdmin.email);
-
-  // Create LGU Office Admin
-  const hrDept = await prisma.department.findFirst({ where: { lguId: lgu.id, name: 'Engineering Office' } });
-  const officePassword = await bcrypt.hash('office123', 12);
-  const officeAdmin = await prisma.user.upsert({
-    where: { email: 'engineering@cebucity.gov.ph' },
-    update: {},
-    create: {
-      email: 'engineering@cebucity.gov.ph',
-      username: 'cebucityeng',
-      password: officePassword,
-      firstName: 'Engineering',
-      lastName: 'Admin',
-      role: 'LGU_OFFICE_ADMIN',
-      moduleAccess: ['RSP'],
-      lguId: lgu.id,
-      departmentId: hrDept?.id,
-    },
-  });
-  console.log('Created Office Admin:', officeAdmin.email);
-
-  // Create Mandaue LGU
-  const mandaue = await prisma.lgu.upsert({
-    where: { slug: 'mandaue-city' },
-    update: {},
-    create: {
-      name: 'City of Mandaue',
-      slug: 'mandaue-city',
-      address: 'Mandaue City Hall, A.C. Cortes Ave, Mandaue City',
-      contactNumber: '(032) 346-2214',
-      email: 'hr@mandauecity.gov.ph',
-      enabledModules: ['RSP'],
-    },
-  });
-  console.log('Created LGU:', mandaue.name);
-
-  const mandaueDepts = ['Human Resource Office', 'Engineering Office', 'Treasury Office'];
-  for (const deptName of mandaueDepts) {
-    await prisma.department.upsert({
-      where: { lguId_name: { lguId: mandaue.id, name: deptName } },
-      update: {},
-      create: { name: deptName, lguId: mandaue.id },
-    });
-  }
-
-  const mandaueHrPassword = await bcrypt.hash('hradmin123', 12);
-  await prisma.user.upsert({
-    where: { email: 'hr@mandauecity.gov.ph' },
-    update: {},
-    create: {
-      email: 'hr@mandauecity.gov.ph',
-      username: 'mandauehr',
-      password: mandaueHrPassword,
-      firstName: 'HR',
-      lastName: 'Admin',
-      role: 'LGU_HR_ADMIN',
-      moduleAccess: ['RSP', 'ADMIN'],
-      lguId: mandaue.id,
-    },
-  });
-  console.log('Created Mandaue HR Admin');
-
-  // Create Lapu-Lapu LGU
   const lapulapu = await prisma.lgu.upsert({
     where: { slug: 'lapu-lapu-city' },
     update: {},
@@ -239,49 +136,9 @@ async function main() {
   });
   console.log('Created Lapu-Lapu Office Admin');
 
-  // Create Cebu Province LGU
-  const cebuProvince = await prisma.lgu.upsert({
-    where: { slug: 'cebu-province' },
-    update: {},
-    create: {
-      name: 'Province of Cebu',
-      slug: 'cebu-province',
-      address: 'Cebu Provincial Capitol, Escario St, Cebu City',
-      contactNumber: '(032) 253-6333',
-      email: 'hr@cebu.gov.ph',
-      enabledModules: ['RSP', 'LND'],
-    },
-  });
-  console.log('Created LGU:', cebuProvince.name);
-
-  const cebuProvDepts = ['Human Resource Office', 'Engineering Office', 'Treasury Office'];
-  for (const deptName of cebuProvDepts) {
-    await prisma.department.upsert({
-      where: { lguId_name: { lguId: cebuProvince.id, name: deptName } },
-      update: {},
-      create: { name: deptName, lguId: cebuProvince.id },
-    });
-  }
-
-  const cebuProvHrPassword = await bcrypt.hash('hradmin123', 12);
-  await prisma.user.upsert({
-    where: { email: 'hr@cebu.gov.ph' },
-    update: {},
-    create: {
-      email: 'hr@cebu.gov.ph',
-      username: 'cebuprovhr',
-      password: cebuProvHrPassword,
-      firstName: 'HR',
-      lastName: 'Admin',
-      role: 'LGU_HR_ADMIN',
-      moduleAccess: ['RSP', 'LND', 'ADMIN'],
-      lguId: cebuProvince.id,
-    },
-  });
-  console.log('Created Cebu Province HR Admin');
-
-  // Create sample Applicant
+  // Applicants are LGU-independent — they can apply to any LGU
   const applicantPassword = await bcrypt.hash('applicant123', 12);
+
   const applicant = await prisma.user.upsert({
     where: { email: 'juan.delacruz@gmail.com' },
     update: {},
@@ -467,33 +324,22 @@ async function main() {
       data: {
         entries: [
           {
-            period: { from: '2020-03-01', to: '2025-12-31' },
-            positionTitle: 'Administrative Aide VI',
-            department: 'City of Mandaue - Treasury Office',
-            monthlySalary: '18957',
-            salaryGrade: 'SG-6 Step 1',
-            statusOfAppointment: 'Permanent',
-            isGovernmentService: true,
-            dutiesAndResponsibilities: [
-              'Process financial documents and vouchers',
-              'Maintain records of collections and disbursements',
-              'Assist in payroll computation and processing',
-              'Prepare monthly financial reports',
-            ],
+            duration: "March 1, 2020 – December 31, 2025",
+            position: "Administrative Aide VI",
+            officeUnit: "Treasury Office",
+            immediateSupervisor: '',
+            agencyAndLocation: "City of Mandaue",
+            accomplishments: [],
+            summaryOfDuties: "Process financial documents and vouchers; Maintain records of collections and disbursements; Assist in payroll computation and processing; Prepare monthly financial reports.",
           },
           {
-            period: { from: '2016-07-01', to: '2020-02-28' },
-            positionTitle: 'IT Support Staff',
-            department: 'TechVentures Inc.',
-            monthlySalary: '18000',
-            salaryGrade: '',
-            statusOfAppointment: 'Regular',
-            isGovernmentService: false,
-            dutiesAndResponsibilities: [
-              'Provide technical support for hardware and software issues',
-              'Maintain network infrastructure and servers',
-              'Manage user accounts and access permissions',
-            ],
+            duration: "July 1, 2016 – February 28, 2020",
+            position: "IT Support Staff",
+            officeUnit: "TechVentures Inc.",
+            immediateSupervisor: '',
+            agencyAndLocation: "TechVentures Inc.",
+            accomplishments: [],
+            summaryOfDuties: "Provide technical support for hardware and software issues; Maintain network infrastructure and servers; Manage user accounts and access permissions.",
           },
         ],
       },
@@ -693,33 +539,22 @@ async function main() {
       data: {
         entries: [
           {
-            period: { from: '2018-06-01', to: '2025-12-31' },
-            positionTitle: 'Nurse I',
-            department: 'City of Cebu - City Health Office',
-            monthlySalary: '30024',
-            salaryGrade: 'SG-11 Step 1',
-            statusOfAppointment: 'Permanent',
-            isGovernmentService: true,
-            dutiesAndResponsibilities: [
-              'Provide nursing care to patients in barangay health stations',
-              'Conduct health assessments and screenings',
-              'Implement immunization programs',
-              'Prepare and submit monthly health reports',
-            ],
+            duration: "June 1, 2018 – December 31, 2025",
+            position: "Nurse I",
+            officeUnit: "City Health Office",
+            immediateSupervisor: '',
+            agencyAndLocation: "City of Cebu",
+            accomplishments: [],
+            summaryOfDuties: "Provide nursing care to patients in barangay health stations; Conduct health assessments and screenings; Implement immunization programs; Prepare and submit monthly health reports.",
           },
           {
-            period: { from: '2014-03-01', to: '2018-05-31' },
-            positionTitle: 'Staff Nurse',
-            department: 'Cebu Doctors University Hospital',
-            monthlySalary: '22000',
-            salaryGrade: '',
-            statusOfAppointment: 'Regular',
-            isGovernmentService: false,
-            dutiesAndResponsibilities: [
-              'Provide direct patient care in the medical-surgical ward',
-              'Administer medications and IV therapy',
-              'Monitor patient vital signs and document observations',
-            ],
+            duration: "March 1, 2014 – May 31, 2018",
+            position: "Staff Nurse",
+            officeUnit: "Cebu Doctors University Hospital",
+            immediateSupervisor: '',
+            agencyAndLocation: "Cebu Doctors University Hospital",
+            accomplishments: [],
+            summaryOfDuties: "Provide direct patient care in the medical-surgical ward; Administer medications and IV therapy; Monitor patient vital signs and document observations.",
           },
         ],
       },
@@ -926,34 +761,22 @@ async function main() {
       data: {
         entries: [
           {
-            period: { from: '2015-09-01', to: '2025-12-31' },
-            positionTitle: 'Engineer I',
-            department: 'City of Mandaue - Engineering Office',
-            monthlySalary: '32245',
-            salaryGrade: 'SG-12 Step 1',
-            statusOfAppointment: 'Permanent',
-            isGovernmentService: true,
-            dutiesAndResponsibilities: [
-              'Design and prepare engineering plans for infrastructure projects',
-              'Conduct site inspections and construction supervision',
-              'Prepare detailed cost estimates and bill of materials',
-              'Review building permit applications for structural compliance',
-              'Coordinate with contractors and project stakeholders',
-            ],
+            duration: "September 1, 2015 – December 31, 2025",
+            position: "Engineer I",
+            officeUnit: "Engineering Office",
+            immediateSupervisor: '',
+            agencyAndLocation: "City of Mandaue",
+            accomplishments: [],
+            summaryOfDuties: "Design and prepare engineering plans for infrastructure projects; Conduct site inspections and construction supervision; Prepare detailed cost estimates and bill of materials; Review building permit applications for structural compliance; Coordinate with contractors and project stakeholders.",
           },
           {
-            period: { from: '2012-04-01', to: '2015-08-31' },
-            positionTitle: 'Junior Civil Engineer',
-            department: 'DPWH Region VII - District Engineering Office',
-            monthlySalary: '25586',
-            salaryGrade: 'SG-10 Step 1',
-            statusOfAppointment: 'Contractual',
-            isGovernmentService: true,
-            dutiesAndResponsibilities: [
-              'Assist in the design and planning of national road projects',
-              'Conduct field surveys and soil investigations',
-              'Monitor construction progress and quality control',
-            ],
+            duration: "April 1, 2012 – August 31, 2015",
+            position: "Junior Civil Engineer",
+            officeUnit: "District Engineering Office",
+            immediateSupervisor: '',
+            agencyAndLocation: "DPWH Region VII",
+            accomplishments: [],
+            summaryOfDuties: "Assist in the design and planning of national road projects; Conduct field surveys and soil investigations; Monitor construction progress and quality control.",
           },
         ],
       },
@@ -1149,33 +972,22 @@ async function main() {
       data: {
         entries: [
           {
-            period: { from: '2021-01-04', to: '2025-12-31' },
-            positionTitle: 'Accountant I',
-            department: 'Province of Cebu - Provincial Treasurer\'s Office',
-            monthlySalary: '32245',
-            salaryGrade: 'SG-12 Step 1',
-            statusOfAppointment: 'Permanent',
-            isGovernmentService: true,
-            dutiesAndResponsibilities: [
-              'Prepare journal entries and financial statements',
-              'Process obligation requests and disbursement vouchers',
-              'Reconcile subsidiary ledgers with general ledger',
-              'Assist in year-end closing and COA audit preparation',
-            ],
+            duration: "January 4, 2021 – December 31, 2025",
+            position: "Accountant I",
+            officeUnit: "Provincial Treasurer's Office",
+            immediateSupervisor: '',
+            agencyAndLocation: "Province of Cebu",
+            accomplishments: [],
+            summaryOfDuties: "Prepare journal entries and financial statements; Process obligation requests and disbursement vouchers; Reconcile subsidiary ledgers with general ledger; Assist in year-end closing and COA audit preparation.",
           },
           {
-            period: { from: '2019-01-07', to: '2020-12-30' },
-            positionTitle: 'Junior Accountant',
-            department: 'SGV & Co. (Ernst & Young Philippines)',
-            monthlySalary: '25000',
-            salaryGrade: '',
-            statusOfAppointment: 'Regular',
-            isGovernmentService: false,
-            dutiesAndResponsibilities: [
-              'Perform audit procedures for financial statement audits',
-              'Prepare audit working papers and documentation',
-              'Conduct substantive testing and analytical review',
-            ],
+            duration: "January 7, 2019 – December 30, 2020",
+            position: "Junior Accountant",
+            officeUnit: "SGV & Co. (Ernst & Young Philippines)",
+            immediateSupervisor: '',
+            agencyAndLocation: "SGV & Co. (Ernst & Young Philippines)",
+            accomplishments: [],
+            summaryOfDuties: "Perform audit procedures for financial statement audits; Prepare audit working papers and documentation; Conduct substantive testing and analytical review.",
           },
         ],
       },
@@ -1353,33 +1165,22 @@ async function main() {
       data: {
         entries: [
           {
-            period: { from: '2019-06-01', to: '2025-12-31' },
-            positionTitle: 'Administrative Aide IV',
-            department: 'City of Cebu - Engineering Office',
-            monthlySalary: '16543',
-            salaryGrade: 'SG-4 Step 1',
-            statusOfAppointment: 'Permanent',
-            isGovernmentService: true,
-            dutiesAndResponsibilities: [
-              'Process incoming and outgoing correspondence',
-              'Maintain office filing system and records',
-              'Assist in preparation of office reports',
-              'Coordinate with other departments for document routing',
-            ],
+            duration: "June 1, 2019 – December 31, 2025",
+            position: "Administrative Aide IV",
+            officeUnit: "Engineering Office",
+            immediateSupervisor: '',
+            agencyAndLocation: "City of Cebu",
+            accomplishments: [],
+            summaryOfDuties: "Process incoming and outgoing correspondence; Maintain office filing system and records; Assist in preparation of office reports; Coordinate with other departments for document routing.",
           },
           {
-            period: { from: '2015-08-01', to: '2019-05-31' },
-            positionTitle: 'Clerk',
-            department: 'SM City Cebu - Admin Office',
-            monthlySalary: '14000',
-            salaryGrade: '',
-            statusOfAppointment: 'Regular',
-            isGovernmentService: false,
-            dutiesAndResponsibilities: [
-              'Handle administrative paperwork and correspondence',
-              'Manage office supplies inventory',
-              'Assist in scheduling and calendar management',
-            ],
+            duration: "August 1, 2015 – May 31, 2019",
+            position: "Clerk",
+            officeUnit: "Admin Office",
+            immediateSupervisor: '',
+            agencyAndLocation: "SM City Cebu",
+            accomplishments: [],
+            summaryOfDuties: "Handle administrative paperwork and correspondence; Manage office supplies inventory; Assist in scheduling and calendar management.",
           },
         ],
       },
@@ -1560,33 +1361,22 @@ async function main() {
       data: {
         entries: [
           {
-            period: { from: '2020-02-01', to: '2025-12-31' },
-            positionTitle: 'Administrative Assistant II',
-            department: 'Municipality of Minglanilla - Mayor\'s Office',
-            monthlySalary: '18018',
-            salaryGrade: 'SG-8 Step 1',
-            statusOfAppointment: 'Contractual',
-            isGovernmentService: true,
-            dutiesAndResponsibilities: [
-              'Draft official correspondence and memoranda',
-              'Manage the Mayor\'s calendar and appointments',
-              'Coordinate with department heads on administrative matters',
-              'Prepare reports and presentations for meetings',
-            ],
+            duration: "February 1, 2020 – December 31, 2025",
+            position: "Administrative Assistant II",
+            officeUnit: "Mayor's Office",
+            immediateSupervisor: '',
+            agencyAndLocation: "Municipality of Minglanilla",
+            accomplishments: [],
+            summaryOfDuties: "Draft official correspondence and memoranda; Manage the Mayor's calendar and appointments; Coordinate with department heads on administrative matters; Prepare reports and presentations for meetings.",
           },
           {
-            period: { from: '2019-03-01', to: '2020-01-31' },
-            positionTitle: 'Office Staff',
-            department: 'BPO Solutions Inc.',
-            monthlySalary: '16000',
-            salaryGrade: '',
-            statusOfAppointment: 'Regular',
-            isGovernmentService: false,
-            dutiesAndResponsibilities: [
-              'Handle customer inquiries and complaints',
-              'Process documentation and data entry',
-              'Coordinate with team leads on daily operations',
-            ],
+            duration: "March 1, 2019 – January 31, 2020",
+            position: "Office Staff",
+            officeUnit: "BPO Solutions Inc.",
+            immediateSupervisor: '',
+            agencyAndLocation: "BPO Solutions Inc.",
+            accomplishments: [],
+            summaryOfDuties: "Handle customer inquiries and complaints; Process documentation and data entry; Coordinate with team leads on daily operations.",
           },
         ],
       },
@@ -1594,718 +1384,80 @@ async function main() {
   });
   console.log('Created Applicant with PDS: Elena Marcos');
 
-  // =============================================
-  // CEBU CITY — FULL RSP PIPELINE SEED DATA
-  // =============================================
-  console.log('\n--- Seeding Cebu City Full Pipeline Data ---');
-
-  // Fetch Cebu City departments
-  const engDept = await prisma.department.findFirst({ where: { lguId: lgu.id, name: 'Engineering Office' } });
-  const healthDept = await prisma.department.findFirst({ where: { lguId: lgu.id, name: 'Health Department' } });
-  const treasuryDept = await prisma.department.findFirst({ where: { lguId: lgu.id, name: 'Treasury Office' } });
-  const hrOfficeDept = await prisma.department.findFirst({ where: { lguId: lgu.id, name: 'Human Resource Office' } });
-  const swDept = await prisma.department.findFirst({ where: { lguId: lgu.id, name: 'Social Welfare Office' } });
-
-  // --- Additional Office Admins for Cebu City ---
-  const officeAdminPw = await bcrypt.hash('office123', 12);
-
-  const healthAdmin = await prisma.user.create({
-    data: {
-      email: 'health@cebucity.gov.ph',
-      username: 'cebucityhealth',
-      password: officeAdminPw,
-      firstName: 'Health',
-      lastName: 'Admin',
-      role: 'LGU_OFFICE_ADMIN',
-      moduleAccess: ['RSP'],
-      lguId: lgu.id,
-      departmentId: healthDept?.id,
-    },
-  });
-  console.log('Created Health Office Admin:', healthAdmin.email);
-
-  const treasuryAdminUser = await prisma.user.create({
-    data: {
-      email: 'treasury@cebucity.gov.ph',
-      username: 'cebucitytreasury',
-      password: officeAdminPw,
-      firstName: 'Treasury',
-      lastName: 'Admin',
-      role: 'LGU_OFFICE_ADMIN',
-      moduleAccess: ['RSP'],
-      lguId: lgu.id,
-      departmentId: treasuryDept?.id,
-    },
-  });
-  console.log('Created Treasury Office Admin:', treasuryAdminUser.email);
-
-  // --- CSC Publication Batches ---
-  const batch1 = await prisma.publication.create({
-    data: {
-      publicationNumber: '2026-001',
-      description: 'First quarter regular publication — 5 positions across Engineering, Health, and Treasury offices',
-      openDate: new Date('2026-01-15'),
-      closeDate: new Date('2026-01-30'),
-      isPublished: true,
-      publishedAt: new Date('2026-01-15'),
-      lguId: lgu.id,
-      createdBy: hrAdmin.id,
-    },
-  });
-
-  const batch2 = await prisma.publication.create({
-    data: {
-      publicationNumber: '2026-002',
-      description: 'Second quarter publication — IT and Social Welfare positions',
-      openDate: new Date('2026-03-01'),
-      closeDate: new Date('2026-03-16'),
-      isPublished: false,
-      lguId: lgu.id,
-      createdBy: hrAdmin.id,
-    },
-  });
-  console.log('Created 2 CSC Publication Batches');
-
-  // --- Default Document Requirements Template ---
-  const defaultDocReqs = [
-    { label: 'Letter of Intent', description: 'Addressed to the City Mayor, indicating Position Title and Plantilla Item No.', isRequired: true, sortOrder: 1 },
-    { label: 'Personal Data Sheet (CS Form 212, Revised 2025)', description: 'Fully accomplished PDS with Work Experience Sheet and recent passport-sized photo — single PDF', isRequired: true, sortOrder: 2 },
-    { label: 'Performance Rating', description: 'Performance rating in the last rating period (if applicable)', isRequired: false, sortOrder: 3 },
-    { label: 'Certificate of Eligibility/Rating/License', description: 'Authenticated copy of civil service eligibility or professional license', isRequired: true, sortOrder: 4 },
-    { label: 'Transcript of Records', description: 'Official transcript of records from the school last attended', isRequired: true, sortOrder: 5 },
-    { label: 'Training Certificates', description: 'All training certificates compiled in a single PDF (for positions with training requirements)', isRequired: false, sortOrder: 6 },
-    { label: 'Designation Orders', description: 'Designation orders (if applicable)', isRequired: false, sortOrder: 7 },
-  ];
-
-  // --- Positions ---
-
-  // Position 1: Administrative Officer V (Engineering, 2 slots, OPEN — Batch 1)
-  const pos1 = await makePosition({
-    data: {
-      title: 'Administrative Officer V',
-      itemNumber: 'OSEC-ADOF5-12-2026',
-      salaryGrade: 18,
-      monthlySalary: 51357,
-      education: "Bachelor's degree relevant to the job",
-      training: '8 hours of relevant training',
-      experience: '2 years of relevant experience',
-      eligibility: 'Career Service Professional / Second Level Eligibility',
-      competency: 'Administrative management, records management, personnel management, office operations',
-      placeOfAssignment: 'Engineering Office, Cebu City Hall',
-      description: 'Responsible for administrative support and management of office operations in the Engineering Office. Oversees records management, personnel coordination, and administrative processes.',
-      status: 'OPEN',
-      openDate: new Date('2026-01-15'),
-      closeDate: new Date('2026-01-30'),
-      slots: 2,
-      lguId: lgu.id,
-      departmentId: engDept?.id,
-      createdBy: hrAdmin.id,
-      cscBatchId: batch1.id,
-    },
-  }, defaultDocReqs);
-
-  // Position 2: Nurse III (Health Dept, 1 slot, FILLED — Batch 1)
-  const pos2 = await makePosition({
-    data: {
-      title: 'Nurse III',
-      itemNumber: 'OSEC-NRS3-05-2026',
-      salaryGrade: 17,
-      monthlySalary: 48313,
-      education: 'Bachelor of Science in Nursing',
-      training: '8 hours of relevant training',
-      experience: '2 years of relevant experience',
-      eligibility: 'RA 1080 (Registered Nurse)',
-      competency: 'Patient care, health assessment, community health nursing, immunization program management',
-      placeOfAssignment: 'City Health Office, Cebu City',
-      description: 'Provides nursing care services at the City Health Office and supervises barangay health workers. Implements immunization and community health programs.',
-      status: 'FILLED',
-      openDate: new Date('2026-01-15'),
-      closeDate: new Date('2026-01-30'),
-      slots: 1,
-      lguId: lgu.id,
-      departmentId: healthDept?.id,
-      createdBy: hrAdmin.id,
-      cscBatchId: batch1.id,
-    },
-  }, defaultDocReqs);
-
-  // Position 3: Accountant II (Treasury, 1 slot, OPEN — Batch 1)
-  const pos3 = await makePosition({
-    data: {
-      title: 'Accountant II',
-      itemNumber: 'OSEC-ACNT2-08-2026',
-      salaryGrade: 15,
-      monthlySalary: 42159,
-      education: 'Bachelor of Science in Accountancy',
-      training: '4 hours of relevant training',
-      experience: '1 year of relevant experience',
-      eligibility: 'RA 1080 (CPA)',
-      competency: 'Government accounting, financial reporting, budget management, audit preparation',
-      placeOfAssignment: 'City Treasury Office, Cebu City',
-      description: 'Performs accounting and financial management functions for the City Treasury Office including journal entries, financial statements, and COA audit coordination.',
-      status: 'OPEN',
-      openDate: new Date('2026-01-15'),
-      closeDate: new Date('2026-01-30'),
-      slots: 1,
-      lguId: lgu.id,
-      departmentId: treasuryDept?.id,
-      createdBy: hrAdmin.id,
-      cscBatchId: batch1.id,
-    },
-  }, defaultDocReqs);
-
-  // Position 4: IT Officer I (HR Office, 1 slot, DRAFT — Batch 2)
-  const pos4 = await makePosition({
-    data: {
-      title: 'Information Technology Officer I',
-      itemNumber: 'OSEC-ITO1-03-2026',
-      salaryGrade: 19,
-      monthlySalary: 54461,
-      education: 'Bachelor of Science in Information Technology, Computer Science, or related field',
-      training: '8 hours of relevant training',
-      experience: '2 years of relevant experience',
-      eligibility: 'Career Service Professional / Second Level Eligibility',
-      competency: 'IT infrastructure management, systems administration, cybersecurity, network management',
-      placeOfAssignment: 'Human Resource Office, Cebu City Hall',
-      description: 'Manages the IT infrastructure and information systems of the LGU. Responsible for network administration, cybersecurity, and technical support across all departments.',
-      status: 'DRAFT',
-      openDate: new Date('2026-03-01'),
-      closeDate: new Date('2026-03-16'),
-      slots: 1,
-      lguId: lgu.id,
-      departmentId: hrOfficeDept?.id,
-      createdBy: hrAdmin.id,
-      cscBatchId: batch2.id,
-    },
-  }, defaultDocReqs);
-
-  // Position 5: Social Welfare Officer II (SW Office, 1 slot, DRAFT — Batch 2)
-  const pos5 = await makePosition({
-    data: {
-      title: 'Social Welfare Officer II',
-      itemNumber: 'OSEC-SWO2-06-2026',
-      salaryGrade: 15,
-      monthlySalary: 42159,
-      education: 'Bachelor of Science in Social Work',
-      training: '4 hours of relevant training',
-      experience: '1 year of relevant experience',
-      eligibility: 'RA 1080 (Registered Social Worker)',
-      competency: 'Social case management, community development, counseling, program implementation',
-      placeOfAssignment: 'Social Welfare Office, Cebu City',
-      description: 'Provides social welfare services and case management for the city. Implements community-based programs for vulnerable populations.',
-      status: 'DRAFT',
-      openDate: new Date('2026-03-01'),
-      closeDate: new Date('2026-03-16'),
-      slots: 1,
-      lguId: lgu.id,
-      departmentId: swDept?.id,
-      createdBy: hrAdmin.id,
-      cscBatchId: batch2.id,
-    },
-  }, defaultDocReqs);
-
-  console.log('Created 5 positions for Cebu City (3 open/filled + 2 draft)');
-
-  // =============================================
-  // APPLICATIONS — Full Pipeline Demo
-  // =============================================
-  //
-  // Position 1 (Admin Officer V, Engineering, 2 slots):
-  //   Juan → APPOINTED | Roberto → SELECTED | Pedro → QUALIFIED
-  //   Anna → SHORTLISTED | Elena → ENDORSED
-  //
-  // Position 2 (Nurse III, Health, 1 slot):
-  //   Maria → APPOINTED (position FILLED)
-  //
-  // Position 3 (Accountant II, Treasury, 1 slot):
-  //   Anna → SUBMITTED | Pedro → SUBMITTED
-  //
-
-  // --- Position 1 Applications ---
-  const app1Juan = await prisma.application.create({
-    data: {
-      positionId: pos1.id,
-      applicantId: applicant.id,
-      status: 'APPOINTED',
-      submittedAt: new Date('2026-01-16T09:00:00'),
-      notes: 'Highest assessment score — appointed to 1st vacancy slot',
-    },
-  });
-
-  const app1Roberto = await prisma.application.create({
-    data: {
-      positionId: pos1.id,
-      applicantId: applicant3.id,
-      status: 'SELECTED',
-      submittedAt: new Date('2026-01-17T10:30:00'),
-      notes: 'Second highest score — selected for 2nd vacancy slot, pending appointment',
-    },
-  });
-
-  const app1Pedro = await prisma.application.create({
-    data: {
-      positionId: pos1.id,
-      applicantId: applicant5.id,
-      status: 'QUALIFIED',
-      submittedAt: new Date('2026-01-18T14:00:00'),
-      notes: 'Qualified but not selected — vacancy slots exceeded',
-    },
-  });
-
-  const app1Anna = await prisma.application.create({
-    data: {
-      positionId: pos1.id,
-      applicantId: applicant4.id,
-      status: 'SHORTLISTED',
-      submittedAt: new Date('2026-01-19T11:00:00'),
-    },
-  });
-
-  const app1Elena = await prisma.application.create({
-    data: {
-      positionId: pos1.id,
-      applicantId: applicant6.id,
-      status: 'ENDORSED',
-      submittedAt: new Date('2026-01-20T08:30:00'),
-    },
-  });
-
-  // --- Position 2 Application ---
-  const app2Maria = await prisma.application.create({
-    data: {
-      positionId: pos2.id,
-      applicantId: applicant2.id,
-      status: 'APPOINTED',
-      submittedAt: new Date('2026-01-16T10:00:00'),
-      notes: 'Sole qualified candidate — position filled',
-    },
-  });
-
-  // --- Position 3 Applications ---
-  const app3Anna = await prisma.application.create({
-    data: {
-      positionId: pos3.id,
-      applicantId: applicant4.id,
-      status: 'SUBMITTED',
-      submittedAt: new Date('2026-01-20T09:00:00'),
-    },
-  });
-
-  const app3Pedro = await prisma.application.create({
-    data: {
-      positionId: pos3.id,
-      applicantId: applicant5.id,
-      status: 'SUBMITTED',
-      submittedAt: new Date('2026-01-21T10:00:00'),
-    },
-  });
-
-  console.log('Created 8 applications across 3 positions');
-
-  // =============================================
-  // INTERVIEW SCHEDULES
-  // =============================================
-
-  // Interview for Position 1 — COMPLETED (Juan, Roberto, Pedro all attended)
-  const interview1 = await prisma.interviewSchedule.create({
-    data: {
-      positionId: pos1.id,
-      scheduleDate: new Date('2026-02-15T09:00:00'),
-      venue: 'Cebu City Hall — Conference Room A, 3rd Floor',
-      notes: 'Panel interview for Administrative Officer V candidates. Panel: HR Admin, Engineering Head, HRMPSB Member.',
-      status: 'COMPLETED',
-      createdBy: hrAdmin.id,
-    },
-  });
-
-  await prisma.interviewScheduleApplicant.createMany({
-    data: [
-      { interviewScheduleId: interview1.id, applicationId: app1Juan.id, notified: true, attended: true },
-      { interviewScheduleId: interview1.id, applicationId: app1Roberto.id, notified: true, attended: true },
-      { interviewScheduleId: interview1.id, applicationId: app1Pedro.id, notified: true, attended: true },
-    ],
-  });
-
-  // Interview for Position 2 — COMPLETED (Maria attended)
-  const interview2 = await prisma.interviewSchedule.create({
-    data: {
-      positionId: pos2.id,
-      scheduleDate: new Date('2026-02-10T09:00:00'),
-      venue: 'Cebu City Hall — Conference Room B, 2nd Floor',
-      notes: 'Panel interview for Nurse III candidate. Panel: HR Admin, City Health Officer, HRMPSB Member.',
-      status: 'COMPLETED',
-      createdBy: hrAdmin.id,
-    },
-  });
-
-  await prisma.interviewScheduleApplicant.create({
-    data: {
-      interviewScheduleId: interview2.id,
-      applicationId: app2Maria.id,
-      notified: true,
-      attended: true,
-    },
-  });
-
-  console.log('Created 2 completed interview schedules');
-
-  // =============================================
-  // ASSESSMENT SCORES
-  // =============================================
-
-  // Position 1 — 3 scored applicants
-  await prisma.assessmentScore.create({
-    data: {
-      applicationId: app1Juan.id,
-      positionId: pos1.id,
-      educationScore: 14.50,
-      trainingScore: 12.00,
-      experienceScore: 16.50,
-      performanceScore: 15.00,
-      psychosocialScore: 13.50,
-      potentialScore: 12.50,
-      interviewScore: 13.00,
-      totalScore: 97.00,
-      remarks: 'Strong candidate — excellent government experience and leadership qualities',
-      scoredBy: hrAdmin.id,
-    },
-  });
-
-  await prisma.assessmentScore.create({
-    data: {
-      applicationId: app1Roberto.id,
-      positionId: pos1.id,
-      educationScore: 13.00,
-      trainingScore: 11.50,
-      experienceScore: 15.00,
-      performanceScore: 14.50,
-      psychosocialScore: 13.00,
-      potentialScore: 12.00,
-      interviewScore: 12.50,
-      totalScore: 91.50,
-      remarks: 'Solid engineering background with good administrative potential',
-      scoredBy: hrAdmin.id,
-    },
-  });
-
-  await prisma.assessmentScore.create({
-    data: {
-      applicationId: app1Pedro.id,
-      positionId: pos1.id,
-      educationScore: 12.50,
-      trainingScore: 10.00,
-      experienceScore: 12.00,
-      performanceScore: 13.00,
-      psychosocialScore: 12.50,
-      potentialScore: 11.00,
-      interviewScore: 11.50,
-      totalScore: 82.50,
-      remarks: 'Qualified — good potential, recommended for future administrative openings',
-      scoredBy: hrAdmin.id,
-    },
-  });
-
-  // Position 2 — Maria
-  await prisma.assessmentScore.create({
-    data: {
-      applicationId: app2Maria.id,
-      positionId: pos2.id,
-      educationScore: 15.00,
-      trainingScore: 13.00,
-      experienceScore: 17.00,
-      performanceScore: 16.00,
-      psychosocialScore: 14.50,
-      potentialScore: 13.00,
-      interviewScore: 14.00,
-      totalScore: 102.50,
-      remarks: 'Excellent nursing background with extensive government and clinical experience',
-      scoredBy: hrAdmin.id,
-    },
-  });
-
-  console.log('Created 4 assessment scores');
-
-  // =============================================
-  // APPOINTMENTS
-  // =============================================
-
-  // Appointment 1: Juan — Position 1 (Admin Officer V) — PENDING (3/8 requirements verified)
-  const appointment1 = await prisma.appointment.create({
-    data: {
-      applicationId: app1Juan.id,
-      positionId: pos1.id,
-      appointmentDate: new Date('2026-03-01'),
-      oathDate: new Date('2026-03-05'),
-      status: 'PENDING',
-      createdBy: hrAdmin.id,
-    },
-  });
-
-  const juanFinalReqs = [
-    { requirementName: 'Oath of Office', description: 'Signed oath of office form (CS Form 32)', isSubmitted: true, isVerified: true, verifiedBy: hrAdmin.id, verifiedAt: new Date('2026-03-06T10:00:00') },
-    { requirementName: 'Appointment Form', description: 'Signed appointment form (CS Form 33-B)', isSubmitted: true, isVerified: true, verifiedBy: hrAdmin.id, verifiedAt: new Date('2026-03-06T10:05:00') },
-    { requirementName: 'Certificate of Assumption to Duty', description: 'Signed certificate of assumption to duty', isSubmitted: true, isVerified: true, verifiedBy: hrAdmin.id, verifiedAt: new Date('2026-03-07T09:00:00') },
-    { requirementName: 'Birth Certificate', description: 'PSA-authenticated birth certificate', isSubmitted: false, isVerified: false },
-    { requirementName: 'Marriage Certificate', description: 'PSA-authenticated marriage certificate (if applicable)', isSubmitted: false, isVerified: false },
-    { requirementName: 'NBI Clearance', description: 'Valid NBI clearance (issued within the last 6 months)', isSubmitted: false, isVerified: false },
-    { requirementName: 'Medical Certificate', description: 'Medical certificate from a government physician', isSubmitted: false, isVerified: false },
-    { requirementName: 'Barangay Clearance', description: 'Barangay clearance from place of residence', isSubmitted: false, isVerified: false },
-  ];
-  for (const req of juanFinalReqs) {
-    await prisma.finalRequirement.create({ data: { appointmentId: appointment1.id, ...req } });
-  }
-
-  // Appointment 2: Maria — Position 2 (Nurse III) — COMPLETED (all 8/8 verified)
-  const appointment2 = await prisma.appointment.create({
-    data: {
-      applicationId: app2Maria.id,
-      positionId: pos2.id,
-      appointmentDate: new Date('2026-02-15'),
-      oathDate: new Date('2026-02-20'),
-      status: 'COMPLETED',
-      createdBy: hrAdmin.id,
-    },
-  });
-
-  const mariaFinalReqNames = [
-    'Oath of Office',
-    'Appointment Form',
-    'Certificate of Assumption to Duty',
-    'Birth Certificate',
-    'Marriage Certificate',
-    'NBI Clearance',
-    'Medical Certificate',
-    'Barangay Clearance',
-  ];
-  for (const reqName of mariaFinalReqNames) {
-    await prisma.finalRequirement.create({
-      data: {
-        appointmentId: appointment2.id,
-        requirementName: reqName,
-        isSubmitted: true,
-        isVerified: true,
-        verifiedBy: hrAdmin.id,
-        verifiedAt: new Date('2026-02-25T10:00:00'),
-      },
-    });
-  }
-
-  console.log('Created 2 appointments (1 pending, 1 completed) with final requirements');
-
-  // =============================================
-  // TRAINING — Cebu City L&D Programs
-  // =============================================
-
-  const training1 = await prisma.training.create({
-    data: {
-      title: 'Public Service Values and Ethics',
-      description: 'Foundation course on government ethics, public accountability, and the Code of Conduct and Ethical Standards for Public Officials and Employees (RA 6713). Covers anti-graft laws, conflict of interest, and ethical decision-making.',
-      type: 'FOUNDATION',
-      venue: 'Cebu City Hall — Function Hall, Ground Floor',
-      conductedBy: 'Civil Service Commission — Region VII',
-      startDate: new Date('2026-01-20'),
-      endDate: new Date('2026-01-22'),
-      numberOfHours: 24,
-      status: 'COMPLETED',
-      lguId: lgu.id,
-      createdBy: hrAdmin.id,
-    },
-  });
-
-  await prisma.trainingParticipant.createMany({
-    data: [
-      { trainingId: training1.id, firstName: 'Jose', lastName: 'Rizal', department: 'Engineering Office', attended: true, completedAt: new Date('2026-01-22') },
-      { trainingId: training1.id, firstName: 'Andres', lastName: 'Bonifacio', department: 'Treasury Office', attended: true, completedAt: new Date('2026-01-22') },
-      { trainingId: training1.id, firstName: 'Gabriela', lastName: 'Silang', department: 'Human Resource Office', attended: true, completedAt: new Date('2026-01-22') },
-      { trainingId: training1.id, firstName: 'Apolinario', lastName: 'Mabini', department: 'Engineering Office', attended: true, completedAt: new Date('2026-01-22') },
-      { trainingId: training1.id, firstName: 'Emilio', lastName: 'Aguinaldo', department: 'Health Department', attended: false, remarks: 'On approved leave — reschedule to next batch' },
-    ],
-  });
-
-  const training2 = await prisma.training.create({
-    data: {
-      title: 'Records Management and Digital Archiving',
-      description: 'Technical training on proper records management, document classification, retention schedules, and transition to digital archiving for government offices. Includes hands-on exercises with the Electronic Records Management System (ERMS).',
-      type: 'TECHNICAL',
-      venue: 'Cebu City Hall — Training Room 2, 2nd Floor',
-      conductedBy: 'National Archives of the Philippines',
-      startDate: new Date('2026-03-10'),
-      endDate: new Date('2026-03-14'),
-      numberOfHours: 40,
-      status: 'ONGOING',
-      lguId: lgu.id,
-      createdBy: hrAdmin.id,
-    },
-  });
-
-  await prisma.trainingParticipant.createMany({
-    data: [
-      { trainingId: training2.id, firstName: 'Gabriela', lastName: 'Silang', department: 'Human Resource Office', attended: null },
-      { trainingId: training2.id, firstName: 'Melchora', lastName: 'Aquino', department: 'Social Welfare Office', attended: null },
-      { trainingId: training2.id, firstName: 'Teresa', lastName: 'Magbanua', department: 'Treasury Office', attended: null },
-      { trainingId: training2.id, firstName: 'Diego', lastName: 'Silang', department: 'Engineering Office', attended: null },
-    ],
-  });
-
-  const training3 = await prisma.training.create({
-    data: {
-      title: 'Leadership and Supervisory Development Program',
-      description: 'Supervisory course covering leadership styles, team management, conflict resolution, performance coaching, and strategic planning for newly promoted supervisors and division heads.',
-      type: 'SUPERVISORY',
-      venue: 'Cebu City Marriott Hotel — Ballroom C',
-      conductedBy: 'Development Academy of the Philippines',
-      startDate: new Date('2026-04-07'),
-      endDate: new Date('2026-04-11'),
-      numberOfHours: 40,
-      status: 'UPCOMING',
-      lguId: lgu.id,
-      createdBy: hrAdmin.id,
-    },
-  });
-
-  const training4 = await prisma.training.create({
-    data: {
-      title: 'Gender and Development (GAD) Sensitivity Training',
-      description: 'Managerial training on gender mainstreaming, GAD planning and budgeting, anti-VAWC laws, and creating gender-responsive programs in local government.',
-      type: 'MANAGERIAL',
-      venue: 'Cebu City Hall — Function Hall, Ground Floor',
-      conductedBy: 'Philippine Commission on Women',
-      startDate: new Date('2026-02-24'),
-      endDate: new Date('2026-02-26'),
-      numberOfHours: 24,
-      status: 'COMPLETED',
-      lguId: lgu.id,
-      createdBy: hrAdmin.id,
-    },
-  });
-
-  await prisma.trainingParticipant.createMany({
-    data: [
-      { trainingId: training4.id, firstName: 'Josefa', lastName: 'Llanes Escoda', department: 'Social Welfare Office', attended: true, completedAt: new Date('2026-02-26') },
-      { trainingId: training4.id, firstName: 'Melchora', lastName: 'Aquino', department: 'Social Welfare Office', attended: true, completedAt: new Date('2026-02-26') },
-      { trainingId: training4.id, firstName: 'Gabriela', lastName: 'Silang', department: 'Human Resource Office', attended: true, completedAt: new Date('2026-02-26') },
-    ],
-  });
-
-  console.log('Created 4 trainings for Cebu City (2 completed, 1 ongoing, 1 upcoming)');
-
-  // =============================================
-  // AUDIT LOGS — Application Status Transitions
-  // =============================================
-
-  const auditLogs: Array<{
-    userId: number;
-    action: string;
-    entity: string;
-    entityId: number;
-    oldValues: any;
-    newValues: any;
-    ipAddress: string;
-    createdAt: Date;
-  }> = [];
-
-  const addLog = (userId: number, action: string, entity: string, entityId: number, oldValues: any, newValues: any, createdAt: Date) => {
-    auditLogs.push({ userId, action, entity, entityId, oldValues, newValues, ipAddress: '192.168.1.100', createdAt });
-  };
-
-  // --- Juan (Position 1): SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUALIFIED → SELECTED → APPOINTED ---
-  addLog(applicant.id, 'SUBMIT_APPLICATION', 'application', app1Juan.id, null, { status: 'SUBMITTED', positionId: pos1.id, applicantId: applicant.id }, new Date('2026-01-16T09:00:00'));
-  addLog(hrAdmin.id, 'ENDORSE_APPLICATION', 'application', app1Juan.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-01-25T10:00:00'));
-  addLog(officeAdmin.id, 'SHORTLIST_APPLICATION', 'application', app1Juan.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-01-30T14:00:00'));
-  addLog(hrAdmin.id, 'CREATE_INTERVIEW', 'application', app1Juan.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-10T09:00:00'));
-  addLog(hrAdmin.id, 'COMPLETE_INTERVIEW', 'application', app1Juan.id, { status: 'FOR_INTERVIEW' }, { status: 'INTERVIEWED' }, new Date('2026-02-15T16:00:00'));
-  addLog(hrAdmin.id, 'SAVE_ASSESSMENT_SCORE', 'application', app1Juan.id, null, { totalScore: 97.00 }, new Date('2026-02-18T09:00:00'));
-  addLog(hrAdmin.id, 'QUALIFY_APPLICANTS', 'application', app1Juan.id, { status: 'INTERVIEWED' }, { status: 'QUALIFIED' }, new Date('2026-02-20T10:00:00'));
-  addLog(hrAdmin.id, 'SELECT_APPLICANTS', 'application', app1Juan.id, { status: 'QUALIFIED' }, { status: 'SELECTED' }, new Date('2026-02-25T10:00:00'));
-  addLog(hrAdmin.id, 'CREATE_APPOINTMENT', 'application', app1Juan.id, { status: 'SELECTED' }, { status: 'APPOINTED' }, new Date('2026-03-01T09:00:00'));
-
-  // --- Roberto (Position 1): SUBMITTED → ... → SELECTED ---
-  addLog(applicant3.id, 'SUBMIT_APPLICATION', 'application', app1Roberto.id, null, { status: 'SUBMITTED', positionId: pos1.id, applicantId: applicant3.id }, new Date('2026-01-17T10:30:00'));
-  addLog(hrAdmin.id, 'ENDORSE_APPLICATION', 'application', app1Roberto.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-01-25T10:15:00'));
-  addLog(officeAdmin.id, 'SHORTLIST_APPLICATION', 'application', app1Roberto.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-01-30T14:30:00'));
-  addLog(hrAdmin.id, 'CREATE_INTERVIEW', 'application', app1Roberto.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-10T09:05:00'));
-  addLog(hrAdmin.id, 'COMPLETE_INTERVIEW', 'application', app1Roberto.id, { status: 'FOR_INTERVIEW' }, { status: 'INTERVIEWED' }, new Date('2026-02-15T16:05:00'));
-  addLog(hrAdmin.id, 'SAVE_ASSESSMENT_SCORE', 'application', app1Roberto.id, null, { totalScore: 91.50 }, new Date('2026-02-18T09:15:00'));
-  addLog(hrAdmin.id, 'QUALIFY_APPLICANTS', 'application', app1Roberto.id, { status: 'INTERVIEWED' }, { status: 'QUALIFIED' }, new Date('2026-02-20T10:05:00'));
-  addLog(hrAdmin.id, 'SELECT_APPLICANTS', 'application', app1Roberto.id, { status: 'QUALIFIED' }, { status: 'SELECTED' }, new Date('2026-02-25T10:05:00'));
-
-  // --- Pedro (Position 1): SUBMITTED → ... → QUALIFIED ---
-  addLog(applicant5.id, 'SUBMIT_APPLICATION', 'application', app1Pedro.id, null, { status: 'SUBMITTED', positionId: pos1.id, applicantId: applicant5.id }, new Date('2026-01-18T14:00:00'));
-  addLog(hrAdmin.id, 'ENDORSE_APPLICATION', 'application', app1Pedro.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-01-25T10:30:00'));
-  addLog(officeAdmin.id, 'SHORTLIST_APPLICATION', 'application', app1Pedro.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-01-30T15:00:00'));
-  addLog(hrAdmin.id, 'CREATE_INTERVIEW', 'application', app1Pedro.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-10T09:10:00'));
-  addLog(hrAdmin.id, 'COMPLETE_INTERVIEW', 'application', app1Pedro.id, { status: 'FOR_INTERVIEW' }, { status: 'INTERVIEWED' }, new Date('2026-02-15T16:10:00'));
-  addLog(hrAdmin.id, 'SAVE_ASSESSMENT_SCORE', 'application', app1Pedro.id, null, { totalScore: 82.50 }, new Date('2026-02-18T09:30:00'));
-  addLog(hrAdmin.id, 'QUALIFY_APPLICANTS', 'application', app1Pedro.id, { status: 'INTERVIEWED' }, { status: 'QUALIFIED' }, new Date('2026-02-20T10:10:00'));
-
-  // --- Anna (Position 1): SUBMITTED → ENDORSED → SHORTLISTED ---
-  addLog(applicant4.id, 'SUBMIT_APPLICATION', 'application', app1Anna.id, null, { status: 'SUBMITTED', positionId: pos1.id, applicantId: applicant4.id }, new Date('2026-01-19T11:00:00'));
-  addLog(hrAdmin.id, 'ENDORSE_APPLICATION', 'application', app1Anna.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-01-26T09:00:00'));
-  addLog(officeAdmin.id, 'SHORTLIST_APPLICATION', 'application', app1Anna.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-01-31T10:00:00'));
-
-  // --- Elena (Position 1): SUBMITTED → ENDORSED ---
-  addLog(applicant6.id, 'SUBMIT_APPLICATION', 'application', app1Elena.id, null, { status: 'SUBMITTED', positionId: pos1.id, applicantId: applicant6.id }, new Date('2026-01-20T08:30:00'));
-  addLog(hrAdmin.id, 'ENDORSE_APPLICATION', 'application', app1Elena.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-01-26T09:30:00'));
-
-  // --- Maria (Position 2): SUBMITTED → ... → APPOINTED ---
-  addLog(applicant2.id, 'SUBMIT_APPLICATION', 'application', app2Maria.id, null, { status: 'SUBMITTED', positionId: pos2.id, applicantId: applicant2.id }, new Date('2026-01-16T10:00:00'));
-  addLog(hrAdmin.id, 'ENDORSE_APPLICATION', 'application', app2Maria.id, { status: 'SUBMITTED' }, { status: 'ENDORSED' }, new Date('2026-01-24T11:00:00'));
-  addLog(healthAdmin.id, 'SHORTLIST_APPLICATION', 'application', app2Maria.id, { status: 'ENDORSED' }, { status: 'SHORTLISTED' }, new Date('2026-01-28T10:00:00'));
-  addLog(hrAdmin.id, 'CREATE_INTERVIEW', 'application', app2Maria.id, { status: 'SHORTLISTED' }, { status: 'FOR_INTERVIEW' }, new Date('2026-02-05T09:00:00'));
-  addLog(hrAdmin.id, 'COMPLETE_INTERVIEW', 'application', app2Maria.id, { status: 'FOR_INTERVIEW' }, { status: 'INTERVIEWED' }, new Date('2026-02-10T16:00:00'));
-  addLog(hrAdmin.id, 'SAVE_ASSESSMENT_SCORE', 'application', app2Maria.id, null, { totalScore: 102.50 }, new Date('2026-02-11T09:00:00'));
-  addLog(hrAdmin.id, 'QUALIFY_APPLICANTS', 'application', app2Maria.id, { status: 'INTERVIEWED' }, { status: 'QUALIFIED' }, new Date('2026-02-12T10:00:00'));
-  addLog(hrAdmin.id, 'SELECT_APPLICANTS', 'application', app2Maria.id, { status: 'QUALIFIED' }, { status: 'SELECTED' }, new Date('2026-02-13T10:00:00'));
-  addLog(hrAdmin.id, 'CREATE_APPOINTMENT', 'application', app2Maria.id, { status: 'SELECTED' }, { status: 'APPOINTED' }, new Date('2026-02-15T09:00:00'));
-
-  // --- Anna & Pedro (Position 3): SUBMITTED ---
-  addLog(applicant4.id, 'SUBMIT_APPLICATION', 'application', app3Anna.id, null, { status: 'SUBMITTED', positionId: pos3.id, applicantId: applicant4.id }, new Date('2026-01-20T09:00:00'));
-  addLog(applicant5.id, 'SUBMIT_APPLICATION', 'application', app3Pedro.id, null, { status: 'SUBMITTED', positionId: pos3.id, applicantId: applicant5.id }, new Date('2026-01-21T10:00:00'));
-
-  // --- Appointment Audit Logs ---
-  addLog(hrAdmin.id, 'CREATE_APPOINTMENT', 'appointment', appointment1.id, null, { applicationId: app1Juan.id, positionId: pos1.id, appointmentDate: '2026-03-01', oathDate: '2026-03-05', status: 'PENDING' }, new Date('2026-03-01T09:00:00'));
-  addLog(hrAdmin.id, 'CREATE_APPOINTMENT', 'appointment', appointment2.id, null, { applicationId: app2Maria.id, positionId: pos2.id, appointmentDate: '2026-02-15', oathDate: '2026-02-20', status: 'PENDING' }, new Date('2026-02-15T09:00:00'));
-  addLog(hrAdmin.id, 'UPDATE_APPOINTMENT', 'appointment', appointment2.id, { status: 'PENDING' }, { status: 'COMPLETED' }, new Date('2026-02-25T10:30:00'));
-
-  // --- Final Requirement Verification Logs ---
-  addLog(hrAdmin.id, 'VERIFY_REQUIREMENT', 'appointment', appointment1.id, null, { requirementName: 'Oath of Office', verified: true }, new Date('2026-03-06T10:00:00'));
-  addLog(hrAdmin.id, 'VERIFY_REQUIREMENT', 'appointment', appointment1.id, null, { requirementName: 'Appointment Form', verified: true }, new Date('2026-03-06T10:05:00'));
-  addLog(hrAdmin.id, 'VERIFY_REQUIREMENT', 'appointment', appointment1.id, null, { requirementName: 'Certificate of Assumption to Duty', verified: true }, new Date('2026-03-07T09:00:00'));
-
-  // Maria's 8 requirements all verified at once
-  for (const reqName of mariaFinalReqNames) {
-    addLog(hrAdmin.id, 'VERIFY_REQUIREMENT', 'appointment', appointment2.id, null, { requirementName: reqName, verified: true }, new Date('2026-02-25T10:00:00'));
-  }
-
-  // --- Interview Audit Logs ---
-  addLog(hrAdmin.id, 'CREATE_INTERVIEW', 'interview_schedule', interview1.id, null, { positionId: pos1.id, scheduleDate: '2026-02-15', venue: 'Conference Room A' }, new Date('2026-02-08T09:00:00'));
-  addLog(hrAdmin.id, 'COMPLETE_INTERVIEW', 'interview_schedule', interview1.id, { status: 'SCHEDULED' }, { status: 'COMPLETED' }, new Date('2026-02-15T16:30:00'));
-  addLog(hrAdmin.id, 'CREATE_INTERVIEW', 'interview_schedule', interview2.id, null, { positionId: pos2.id, scheduleDate: '2026-02-10', venue: 'Conference Room B' }, new Date('2026-02-03T09:00:00'));
-  addLog(hrAdmin.id, 'COMPLETE_INTERVIEW', 'interview_schedule', interview2.id, { status: 'SCHEDULED' }, { status: 'COMPLETED' }, new Date('2026-02-10T16:30:00'));
-
-  // --- CSC Batch Audit Logs ---
-  addLog(hrAdmin.id, 'CREATE', 'csc_publication_batch', batch1.id, null, { publicationNumber: '2026-001', description: 'First quarter regular publication' }, new Date('2026-01-10T09:00:00'));
-  addLog(hrAdmin.id, 'UPDATE', 'csc_publication_batch', batch1.id, { isPublished: false }, { isPublished: true }, new Date('2026-01-15T08:00:00'));
-  addLog(hrAdmin.id, 'CREATE', 'csc_publication_batch', batch2.id, null, { publicationNumber: '2026-002', description: 'Second quarter publication' }, new Date('2026-02-28T09:00:00'));
-
-  // --- Training Audit Logs ---
-  addLog(hrAdmin.id, 'CREATE', 'training', training1.id, null, { title: 'Public Service Values and Ethics', type: 'FOUNDATION' }, new Date('2026-01-08T09:00:00'));
-  addLog(hrAdmin.id, 'UPDATE', 'training', training1.id, { status: 'UPCOMING' }, { status: 'COMPLETED' }, new Date('2026-01-22T17:00:00'));
-  addLog(hrAdmin.id, 'CREATE', 'training', training2.id, null, { title: 'Records Management and Digital Archiving', type: 'TECHNICAL' }, new Date('2026-03-01T09:00:00'));
-  addLog(hrAdmin.id, 'UPDATE', 'training', training2.id, { status: 'UPCOMING' }, { status: 'ONGOING' }, new Date('2026-03-10T08:00:00'));
-  addLog(hrAdmin.id, 'CREATE', 'training', training3.id, null, { title: 'Leadership and Supervisory Development Program', type: 'SUPERVISORY' }, new Date('2026-03-15T09:00:00'));
-  addLog(hrAdmin.id, 'CREATE', 'training', training4.id, null, { title: 'Gender and Development Sensitivity Training', type: 'MANAGERIAL' }, new Date('2026-02-10T09:00:00'));
-  addLog(hrAdmin.id, 'UPDATE', 'training', training4.id, { status: 'UPCOMING' }, { status: 'COMPLETED' }, new Date('2026-02-26T17:00:00'));
-
-  // Bulk insert all audit logs
-  await prisma.auditLog.createMany({ data: auditLogs });
-  console.log(`Created ${auditLogs.length} audit logs for Cebu City pipeline`);
-
-  console.log('\n--- Cebu City Full Pipeline Seed Complete ---');
 
   // =============================================
   // LAPU-LAPU CITY — Full RSP Pipeline
   // =============================================
+
+
+  // ---- Comparative assessment helper (dynamic factor template) ----
+  // Mirrors server/src/config/assessmentDefaults.ts. Each position gets its own snapshot of the
+  // template; ratings are percentages (0-100) keyed by factor label.
+  const ASSESSMENT_TEMPLATE = [
+    { code: 'I', label: null as string | null, points: 25, factors: [{ label: 'PERFORMANCE', maxWeight: 1 }] },
+    {
+      code: 'II', label: 'ETE' as string | null, points: 40,
+      factors: [
+        { label: 'EDUCATION', maxWeight: 0.35 },
+        { label: 'Relevant TRAINING', maxWeight: 0.3 },
+        { label: 'Relevant EXPERIENCE', maxWeight: 0.35 },
+      ],
+    },
+    { code: 'III', label: null as string | null, points: 30, factors: [{ label: 'PSYCHO-SOCIAL ATTRIBUTES & POTENTIAL', maxWeight: 1 }] },
+    { code: 'IV', label: null as string | null, points: 5, factors: [{ label: 'OUTSTANDING ACCOMPLISHMENTS', maxWeight: 1 }] },
+  ];
+
+  const templateCache = new Map<number, { id: number; points: number; factors: { id: number; label: string; maxWeight: number }[] }[]>();
+
+  async function ensureAssessmentTemplate(positionId: number, lguId: number) {
+    const cached = templateCache.get(positionId);
+    if (cached) return cached;
+    const groups = [];
+    for (const [i, g] of ASSESSMENT_TEMPLATE.entries()) {
+      const created = await prisma.assessmentGroup.create({
+        data: {
+          lguId, positionId, code: g.code, label: g.label, points: g.points, sortOrder: i,
+          factors: { create: g.factors.map((f, fi) => ({ label: f.label, maxWeight: f.maxWeight, sortOrder: fi })) },
+        },
+        include: { factors: true },
+      });
+      groups.push({
+        id: created.id,
+        points: Number(created.points),
+        factors: created.factors.map((f) => ({ id: f.id, label: f.label, maxWeight: Number(f.maxWeight) })),
+      });
+    }
+    templateCache.set(positionId, groups);
+    return groups;
+  }
+
+  async function makeAssessment(opts: {
+    applicationId: number; positionId: number; lguId: number;
+    ratings: Record<string, number>; remarks: string; scoredBy: number;
+  }) {
+    const groups = await ensureAssessmentTemplate(opts.positionId, opts.lguId);
+    const factorScores: Record<string, number> = {};
+    let total = 0;
+    for (const g of groups) {
+      let subtotal = 0;
+      for (const f of g.factors) {
+        const rating = opts.ratings[f.label] ?? 0;
+        factorScores[String(f.id)] = rating;
+        subtotal += f.maxWeight * (rating / 100);
+      }
+      total += subtotal * g.points;
+    }
+    return prisma.assessmentScore.create({
+      data: {
+        applicationId: opts.applicationId,
+        positionId: opts.positionId,
+        factorScores,
+        totalScore: Number(total.toFixed(2)),
+        remarks: opts.remarks,
+        scoredBy: opts.scoredBy,
+      },
+    });
+  }
 
   console.log('\n--- Seeding Lapu-Lapu City Pipeline ---');
 
@@ -2836,7 +1988,35 @@ async function main() {
     },
   });
 
-  console.log('Created 9 Lapu-Lapu applications across 3 positions');
+  // Fresh submissions awaiting HR review — the entry state of the pipeline
+  const llApp4Maria = await prisma.application.create({
+    data: {
+      positionId: llPos8.id,   // Information Technology Officer I
+      applicantId: applicant2.id,  // Maria
+      status: 'SUBMITTED',
+      submittedAt: new Date('2026-05-04T09:15:00'),
+    },
+  });
+
+  const llApp4Roberto = await prisma.application.create({
+    data: {
+      positionId: llPos8.id,   // Information Technology Officer I
+      applicantId: applicant3.id,  // Roberto
+      status: 'SUBMITTED',
+      submittedAt: new Date('2026-05-05T14:40:00'),
+    },
+  });
+
+  const llApp5Juan = await prisma.application.create({
+    data: {
+      positionId: llPos6.id,   // Fire Marshal I
+      applicantId: applicant.id,   // Juan
+      status: 'SUBMITTED',
+      submittedAt: new Date('2026-05-06T10:05:00'),
+    },
+  });
+
+  console.log('Created 12 Lapu-Lapu applications across 5 positions');
 
   // =============================================
   // LAPU-LAPU INTERVIEW SCHEDULES
@@ -2909,73 +2089,41 @@ async function main() {
   // =============================================
 
   // Position 1 — 3 scored applicants (Juan, Roberto, Anna)
-  await prisma.assessmentScore.create({
-    data: {
-      applicationId: llApp1Juan.id,
-      positionId: llPos1.id,
-      educationScore: 15.00,
-      trainingScore: 13.00,
-      experienceScore: 17.00,
-      performanceScore: 15.50,
-      psychosocialScore: 14.00,
-      potentialScore: 13.00,
-      interviewScore: 14.50,
-      totalScore: 102.00,
-      remarks: 'Outstanding candidate — strong technical background with government engineering experience',
-      scoredBy: llHrAdmin.id,
-    },
+  await makeAssessment({
+    applicationId: llApp1Juan.id,
+    positionId: llPos1.id,
+    lguId: lapulapu.id,
+    ratings: { 'PERFORMANCE': 97, 'EDUCATION': 95, 'Relevant TRAINING': 93, 'Relevant EXPERIENCE': 96, 'PSYCHO-SOCIAL ATTRIBUTES & POTENTIAL': 95, 'OUTSTANDING ACCOMPLISHMENTS': 92 },
+    remarks: 'Outstanding candidate — strong technical background with government engineering experience',
+    scoredBy: llHrAdmin.id,
   });
 
-  await prisma.assessmentScore.create({
-    data: {
-      applicationId: llApp1Roberto.id,
-      positionId: llPos1.id,
-      educationScore: 14.00,
-      trainingScore: 12.50,
-      experienceScore: 15.50,
-      performanceScore: 14.00,
-      psychosocialScore: 13.50,
-      potentialScore: 12.50,
-      interviewScore: 13.00,
-      totalScore: 95.00,
-      remarks: 'Solid engineering credentials with good leadership potential',
-      scoredBy: llHrAdmin.id,
-    },
+  await makeAssessment({
+    applicationId: llApp1Roberto.id,
+    positionId: llPos1.id,
+    lguId: lapulapu.id,
+    ratings: { 'PERFORMANCE': 90, 'EDUCATION': 88, 'Relevant TRAINING': 85, 'Relevant EXPERIENCE': 90, 'PSYCHO-SOCIAL ATTRIBUTES & POTENTIAL': 88, 'OUTSTANDING ACCOMPLISHMENTS': 70 },
+    remarks: 'Solid engineering credentials with good leadership potential',
+    scoredBy: llHrAdmin.id,
   });
 
-  await prisma.assessmentScore.create({
-    data: {
-      applicationId: llApp1Anna.id,
-      positionId: llPos1.id,
-      educationScore: 13.50,
-      trainingScore: 11.00,
-      experienceScore: 13.00,
-      performanceScore: 13.50,
-      psychosocialScore: 12.00,
-      potentialScore: 11.50,
-      interviewScore: 12.00,
-      totalScore: 86.50,
-      remarks: 'Qualified — recommended for future technical openings',
-      scoredBy: llHrAdmin.id,
-    },
+  await makeAssessment({
+    applicationId: llApp1Anna.id,
+    positionId: llPos1.id,
+    lguId: lapulapu.id,
+    ratings: { 'PERFORMANCE': 83, 'EDUCATION': 82, 'Relevant TRAINING': 78, 'Relevant EXPERIENCE': 80, 'PSYCHO-SOCIAL ATTRIBUTES & POTENTIAL': 82, 'OUTSTANDING ACCOMPLISHMENTS': 50 },
+    remarks: 'Qualified — recommended for future technical openings',
+    scoredBy: llHrAdmin.id,
   });
 
   // Position 3 — Pedro
-  await prisma.assessmentScore.create({
-    data: {
-      applicationId: llApp3Pedro.id,
-      positionId: llPos3.id,
-      educationScore: 14.00,
-      trainingScore: 12.00,
-      experienceScore: 15.00,
-      performanceScore: 14.50,
-      psychosocialScore: 13.00,
-      potentialScore: 12.00,
-      interviewScore: 13.50,
-      totalScore: 94.00,
-      remarks: 'Well-qualified for revenue collection role — solid accounting background',
-      scoredBy: llHrAdmin.id,
-    },
+  await makeAssessment({
+    applicationId: llApp3Pedro.id,
+    positionId: llPos3.id,
+    lguId: lapulapu.id,
+    ratings: { 'PERFORMANCE': 92, 'EDUCATION': 90, 'Relevant TRAINING': 86, 'Relevant EXPERIENCE': 91, 'PSYCHO-SOCIAL ATTRIBUTES & POTENTIAL': 90, 'OUTSTANDING ACCOMPLISHMENTS': 75 },
+    remarks: 'Well-qualified for revenue collection role — solid accounting background',
+    scoredBy: llHrAdmin.id,
   });
 
   console.log('Created 4 Lapu-Lapu assessment scores');
@@ -2998,7 +2146,7 @@ async function main() {
 
   const juanLLFinalReqs = [
     { requirementName: 'Oath of Office', description: 'Signed oath of office form (CS Form 32)', isSubmitted: true, isVerified: true, verifiedBy: llHrAdmin.id, verifiedAt: new Date('2026-03-21T10:00:00') },
-    { requirementName: 'Appointment Form', description: 'Signed appointment form (CS Form 33-B)', isSubmitted: true, isVerified: true, verifiedBy: llHrAdmin.id, verifiedAt: new Date('2026-03-21T10:05:00') },
+    { requirementName: 'Appointment Form', description: 'Signed appointment form (CS Form 33-A)', isSubmitted: true, isVerified: true, verifiedBy: llHrAdmin.id, verifiedAt: new Date('2026-03-21T10:05:00') },
     { requirementName: 'Certificate of Assumption to Duty', description: 'Signed certificate of assumption to duty', isSubmitted: true, isVerified: true, verifiedBy: llHrAdmin.id, verifiedAt: new Date('2026-03-22T09:00:00') },
     { requirementName: 'Birth Certificate', description: 'PSA-authenticated birth certificate', isSubmitted: true, isVerified: true, verifiedBy: llHrAdmin.id, verifiedAt: new Date('2026-03-22T09:30:00') },
     { requirementName: 'Marriage Certificate', description: 'PSA-authenticated marriage certificate (if applicable)', isSubmitted: false, isVerified: false },
@@ -3244,9 +2392,32 @@ async function main() {
   llAddLog(llHrAdmin.id, 'UPDATE', 'training', llTraining2.id, { status: 'UPCOMING' }, { status: 'ONGOING' }, new Date('2026-03-24T08:00:00'));
   llAddLog(llHrAdmin.id, 'CREATE', 'training', llTraining3.id, null, { title: 'Local Government Executive Leadership Program', type: 'MANAGERIAL' }, new Date('2026-03-20T09:00:00'));
 
+  // Status trail for the three fresh submissions
+  llAddLog(applicant2.id, 'SUBMIT_APPLICATION', 'application', llApp4Maria.id, null, { status: 'SUBMITTED', positionId: llPos8.id, applicantId: applicant2.id }, new Date('2026-05-04T09:15:00'));
+  llAddLog(applicant3.id, 'SUBMIT_APPLICATION', 'application', llApp4Roberto.id, null, { status: 'SUBMITTED', positionId: llPos8.id, applicantId: applicant3.id }, new Date('2026-05-05T14:40:00'));
+  llAddLog(applicant.id, 'SUBMIT_APPLICATION', 'application', llApp5Juan.id, null, { status: 'SUBMITTED', positionId: llPos6.id, applicantId: applicant.id }, new Date('2026-05-06T10:05:00'));
+
   // Bulk insert all Lapu-Lapu audit logs
   await prisma.auditLog.createMany({ data: llAuditLogs });
   console.log(`Created ${llAuditLogs.length} audit logs for Lapu-Lapu pipeline`);
+
+  // ---- HRMPSB signatories (Comparative Assessment Form signature block) ----
+  // Placeholder names with realistic city-level designations — NOT actual Lapu-Lapu officials.
+  // The composition mirrors a standard LGU HRMPSB: appointing authority's rep as chair, admin
+  // as vice chair, legal + HRMO as members, the requesting department head, and the accredited
+  // employee association (PEACE) representative.
+  await prisma.psbMember.createMany({
+    data: [
+      { lguId: lapulapu.id, name: 'ROSALINDA M. ABELLANA', designation: 'City Mayor', psbRole: 'Chairperson, HRMPSB', type: 'PSB_MEMBER', sortOrder: 1 },
+      { lguId: lapulapu.id, name: 'ATTY. FERDINAND L. YBAÑEZ', designation: 'City Administrator', psbRole: 'Vice Chairperson, HRMPSB', type: 'PSB_MEMBER', sortOrder: 2 },
+      { lguId: lapulapu.id, name: 'ATTY. MARICEL P. CUIZON', designation: 'City Legal Officer', psbRole: 'Member, HRMPSB', type: 'PSB_MEMBER', sortOrder: 3 },
+      { lguId: lapulapu.id, name: 'ENGR. ROGELIO T. SUMALINOG', designation: 'City Engineer', psbRole: 'Member, HRMPSB', type: 'PSB_MEMBER', sortOrder: 4 },
+      { lguId: lapulapu.id, name: 'DR. CARMELITA V. LOZADA', designation: 'City Health Officer', psbRole: 'Member, HRMPSB', type: 'PSB_MEMBER', sortOrder: 5 },
+      { lguId: lapulapu.id, name: 'BENJAMIN R. PATALINGHUG', designation: 'Administrative Officer IV', psbRole: 'Member, HRMPSB-PEACE Representative', type: 'PSB_MEMBER', sortOrder: 6 },
+      { lguId: lapulapu.id, name: 'GLORIA S. MENDOZA', designation: 'Human Resource Management Officer IV', psbRole: 'Secretariat, HRMPSB', type: 'PREPARED_BY', sortOrder: 1 },
+    ],
+  });
+  console.log('Created 7 Lapu-Lapu HRMPSB signatories (6 members + 1 prepared by)');
 
   console.log('\n--- Lapu-Lapu City Full Pipeline Seed Complete ---');
   console.log('Seeding complete!');

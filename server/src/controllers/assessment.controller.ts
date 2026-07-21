@@ -3,44 +3,18 @@ import prisma from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import { createAuditLog } from '../utils/audit';
 import { Decimal } from '@prisma/client/runtime/library';
-
-const computeTotalScore = (scores: {
-  educationScore?: number | null;
-  trainingScore?: number | null;
-  experienceScore?: number | null;
-  performanceScore?: number | null;
-  psychosocialScore?: number | null;
-  potentialScore?: number | null;
-  interviewScore?: number | null;
-}): number => {
-  const values = [
-    scores.educationScore,
-    scores.trainingScore,
-    scores.experienceScore,
-    scores.performanceScore,
-    scores.psychosocialScore,
-    scores.potentialScore,
-    scores.interviewScore,
-  ];
-  return values.reduce((sum: number, val) => sum + (val ? Number(val) : 0), 0);
-};
+import { computeAssessment } from '../config/assessmentDefaults';
 
 export const saveAssessmentScore = async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      applicationId,
-      educationScore,
-      trainingScore,
-      experienceScore,
-      performanceScore,
-      psychosocialScore,
-      potentialScore,
-      interviewScore,
-      remarks,
-    } = req.body;
+    const { applicationId, factorScores, remarks } = req.body;
 
     if (!applicationId) {
       return res.status(400).json({ message: 'Application ID is required' });
+    }
+
+    if (factorScores && typeof factorScores !== 'object') {
+      return res.status(400).json({ message: 'factorScores must be an object keyed by factor id' });
     }
 
     // Verify application exists
@@ -59,25 +33,39 @@ export const saveAssessmentScore = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'Insufficient permissions' });
     }
 
-    const totalScore = computeTotalScore({
-      educationScore,
-      trainingScore,
-      experienceScore,
-      performanceScore,
-      psychosocialScore,
-      potentialScore,
-      interviewScore,
+    // The total is always computed server-side from the position's own template — the client
+    // never gets to assert a total, and a stale client template can't corrupt the ranking.
+    const groups = await prisma.assessmentGroup.findMany({
+      where: { positionId: application.position.id },
+      include: { factors: { orderBy: { sortOrder: 'asc' } } },
+      orderBy: { sortOrder: 'asc' },
     });
 
+    if (groups.length === 0) {
+      return res.status(400).json({
+        message: 'This position has no assessment template yet. Open the assessment page first.',
+      });
+    }
+
+    const ratings: Record<string, number> = {};
+    const validIds = new Set(groups.flatMap((g) => g.factors.map((f) => String(f.id))));
+    for (const [key, value] of Object.entries((factorScores ?? {}) as Record<string, unknown>)) {
+      if (!validIds.has(key)) continue; // ignore factors that don't belong to this position
+      const rating = Number(value);
+      if (!Number.isFinite(rating) || rating < 0 || rating > 100) {
+        return res.status(400).json({ message: 'Each rating must be between 0 and 100' });
+      }
+      ratings[key] = rating;
+    }
+
+    const { total } = computeAssessment(
+      groups.map((g) => ({ id: g.id, points: Number(g.points), factors: g.factors.map((f) => ({ id: f.id, maxWeight: Number(f.maxWeight) })) })),
+      ratings
+    );
+
     const scoreData = {
-      educationScore: educationScore != null ? new Decimal(educationScore) : null,
-      trainingScore: trainingScore != null ? new Decimal(trainingScore) : null,
-      experienceScore: experienceScore != null ? new Decimal(experienceScore) : null,
-      performanceScore: performanceScore != null ? new Decimal(performanceScore) : null,
-      psychosocialScore: psychosocialScore != null ? new Decimal(psychosocialScore) : null,
-      potentialScore: potentialScore != null ? new Decimal(potentialScore) : null,
-      interviewScore: interviewScore != null ? new Decimal(interviewScore) : null,
-      totalScore: new Decimal(totalScore),
+      factorScores: ratings,
+      totalScore: new Decimal(total.toFixed(2)),
       remarks: remarks || null,
       scoredBy: req.user!.id,
     };

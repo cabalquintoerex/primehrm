@@ -54,17 +54,14 @@
 - [x] Seed: Clean reseed with FK-ordered deletion (includes CscPublicationBatch)
 
 ### Demo Accounts
+> Phase 18 reduced the seed to **Lapu-Lapu only**. The Cebu City / Mandaue / Cebu Province
+> accounts below no longer exist.
+
 | Role | Username | Password | LGU |
 |------|----------|----------|-----|
 | Super Admin | superadmin | admin123 | — |
 | HR Admin | lapulapuhr | hradmin123 | Lapu-Lapu |
-| HR Admin | cebucityhr | hradmin123 | Cebu City |
-| HR Admin | mandauehr | hradmin123 | Mandaue |
-| HR Admin | cebuprovhr | hradmin123 | Cebu Province |
-| Office Admin | lapulapueng | office123 | Lapu-Lapu |
-| Office Admin | cebucityeng | office123 | Cebu City (Engineering) |
-| Office Admin | cebucityhealth | office123 | Cebu City (Health) |
-| Office Admin | cebucitytreasury | office123 | Cebu City (Treasury) |
+| Office Admin | lapulapueng | office123 | Lapu-Lapu (Engineering) |
 | Office Admin | lapulaputourism | office123 | Lapu-Lapu (Tourism) |
 | Applicant | juandelacruz | applicant123 | — |
 | Applicant | mariagarcia | applicant123 | — |
@@ -137,6 +134,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 ### Assessment Score Gating
 - Qualify button disabled when no assessment score exists for the applicant
 - Assessment scores section displayed on application detail (7 criteria grid + total score)
+  — **superseded by Phase 13**: the grid now renders the position's own factor template
 
 ---
 
@@ -149,7 +147,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 - [x] Per-applicant "No Show" action on interview detail (mark before completing)
 - [x] Interview cancellation
 - [x] Prominent "Encode Assessment Scores" card shown after interview completion
-- [x] Comparative assessment scoring — 7 criteria (Education, Training, Experience, Performance, Psychosocial, Potential, Interview)
+- [x] Comparative assessment scoring — 7 criteria (Education, Training, Experience, Performance, Psychosocial, Potential, Interview) — **superseded by Phase 13** (user-defined groups/factors)
 - [x] Auto-computed total score and ranking by total desc
 - [x] Qualify applicants — bulk action to mark INTERVIEWED → QUALIFIED (requires assessment score)
 - [x] Cache invalidation — interview mutations (complete, cancel, no-show) invalidate applications query
@@ -157,7 +155,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 - [x] Sidebar nav: "Interviews" for SUPER_ADMIN, LGU_HR_ADMIN
 - [x] Routes: /rsp/interviews, /rsp/interviews/:id, /rsp/assessments/:positionId
 - [ ] Email notifications (Nodemailer) — deferred
-- [ ] Generate Certificate of Qualified Applicants (PDF) — deferred
+- [x] Generate Certificate of Qualified Applicants (PDF) — **done in Phase 15** (HRMPSB Certification, generated per position from the Selection module)
 
 ---
 
@@ -188,7 +186,7 @@ SUBMITTED → ENDORSED → SHORTLISTED → FOR_INTERVIEW → INTERVIEWED → QUA
 - [x] Appointments list page with filters (status, position) and pagination
 - [x] Appointment stats cards (Total, Pending, Completed)
 - [x] Appointment detail page — appointee info, position, PDS data, dates
-- [x] Generate Appointment Form (CS Form 33-B) — printable HTML with LGU header, appointee details, position info, salary, signatures
+- [x] Generate Appointment Form (CS Form 33-B) — printable HTML with LGU header, appointee details, position info, salary, signatures — **superseded in Phase 16 by CS Form 33-A (Revised 2025)**
 - [x] Generate Oath of Office (CS Form 32) — printable HTML with oath text, affiant signature, administering officer
 - [x] Final requirements management — add custom requirements, delete unverified ones
 - [x] Verify/unverify individual requirements with verifier tracking and timestamp
@@ -566,7 +564,7 @@ modules plus a system section, with a post-login launcher and a sidebar switcher
 |---------|------|-------|---------------|
 | RSP | `/rsp` | Dashboard, Positions, Publications, Applications, Interviews, Selection, Appointments, Reports | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
 | L&D | `/lnd` | Dashboard, Training, Reports | SUPER_ADMIN, LGU_HR_ADMIN |
-| Administration | `/admin` | Dashboard (super admin), LGU Management, Departments, Users, Audit Logs | SUPER_ADMIN, LGU_HR_ADMIN |
+| Administration | `/admin` | Dashboard (super admin), LGU Management, Departments, Users, HRMPSB Signatories, Audit Logs | SUPER_ADMIN, LGU_HR_ADMIN |
 | Applicant portal | `/applicant` | Dashboard, PDS, My Applications | APPLICANT |
 
 ### Post-Login Destination
@@ -657,6 +655,9 @@ A SUPER_ADMIN can license RSP and/or L&D per LGU. Administration is never licens
 - [x] Verified live: `mandauehr` gets 403 on `/trainings`, `/dashboard/lnd`, `/reports/trainings` but 200 on `/dashboard/rsp`; enabling L&D via PUT flips it to 200; invalid module key → 400
 
 #### How Licensing Interacts With the Client
+> The `mandauehr` examples below are historical — Phase 18 removed Mandaue from the seed. The
+> mechanism is unchanged; there is simply no seeded account demonstrating it.
+
 - `mandauehr` has `enabledModules: ['RSP']` → `launcherModulesForUser` returns only RSP → launcher is skipped, lands on `/rsp`
 - If they reach `/modules`, the L&D card renders locked ("Not enabled for this LGU")
 - The L&D route group is guarded by `ProtectedRoute module="LND"` → redirected to their home if they navigate there directly
@@ -801,9 +802,9 @@ added directly on the publication detail page, and every mutation there invalida
 ### Appointment Document Annexes
 - [ ] ANNEX A — DBM-CSC Form No. 1, Position Description Form (Revised 2017) — Fillable
 - [ ] ANNEX B — SS Porma Blg. 32, Narebisa 2025 — Panunumpa sa Katungkulan — Generate
-- [ ] ANNEX C — CS Form No. 33-A, Revised 2025 — Appointment Form (Regulated) — Generate
-- [ ] ANNEX I — CS Form No. 1, Revised 2025 — Appointment Transmittal and Action Form — Generate
-- [ ] ANNEX L — CS Form No. 4, Revised 2025 — Certification of Assumption to Duty — Generate
+- [x] ANNEX C — CS Form No. 33-A, Revised 2025 — Appointment Form (Regulated) — **done in Phase 16** (replaced CS Form 33-B)
+- [x] ANNEX I — CS Form No. 1, Revised 2025 — Appointment Transmittal and Action Form — **done in Phase 16** (PDF + Excel)
+- [x] ANNEX L — CS Form No. 4, Revised 2025 — Certification of Assumption to Duty — **done in Phase 16**
 
 ### L&D Module Overhaul
 - [x] Module switcher after login (RSP / L&D) + toggle in sidebar/header — done in Phase 9C
@@ -952,3 +953,563 @@ Human Resource Office, Engineering Office, Treasury Office, Tourism Office, Heal
 
 ### Audit Logs
 - 78 audit logs with full status transition tracking for all 9 applications
+
+---
+
+## Phase 11: Work Experience Sheet Module — COMPLETED
+
+Standalone WES module (CS Form No. 212 Attachment), mirroring the PDS module's create-data →
+generate-PDF pattern. The backend already existed (`GET`/`POST /wes`, `getMyWes`/`saveMyWes`) —
+this was client-only work.
+
+### Design decisions
+| Decision | Rationale |
+|----------|-----------|
+| **Fully independent of the PDS** — no prefill from PDS Section V | Explicit requirement. The applicant fills the WES from scratch; the two sheets never read each other |
+| Repeating **entry cards**, not a table | The printed form is a narrative document (bulleted blocks per job), not a grid. Narrative text in a table cell is unusable |
+| `duration` is **free text**, not date pickers | The form's own instruction calls for `"1998-Present"` and abbreviated months — date pickers make the required format impossible |
+| `accomplishments` is a **string array** | The form lists them as separate bullets, not prose |
+
+### Data shape (`WESEntry`)
+`duration`, `position`, `officeUnit`, `immediateSupervisor`, `agencyAndLocation`,
+`accomplishments: string[]`, `summaryOfDuties`.
+
+> The previous `WESData` type modelled PDS Section V (`monthlySalary`, `salaryGrade`,
+> `statusOfAppointment`) and matched nothing on the real form. It was referenced nowhere in the
+> client, so it was replaced outright.
+
+### Client
+- [x] `features/wes/WESFormPage.tsx` — entry cards, add/remove entries, add/remove accomplishment
+  bullets, duties textarea, save + download from header and footer
+- [x] Form instructions reproduced verbatim from the CSC form in an amber callout
+- [x] `lib/generateWES.ts` — jsPDF, folio 8.5x13 (matches PDS output). Split into `buildWESDoc()`
+  (pure, returns the doc) and `generateWES()` (saves), so the layout can be rendered headlessly
+- [x] Renders title, both instructions, per-entry bullets with bold labels, sub-bulleted
+  accomplishments and duties, signature-over-printed-name block, "Attachment to CS Form No. 212"
+  page footer, and paginates when entries overflow
+- [x] Route `/applicant/wes`; sidebar entry after Personal Data Sheet; applicant dashboard quick-link
+  card (grid widened to `sm:grid-cols-2 lg:grid-cols-4`)
+
+### Verification
+- PDF **rendered headlessly and visually inspected** against the source form
+- API round-trip confirmed: `POST` → `GET` preserves all 7 fields, `version` increments
+- Fixed during review: section headings printed a stray trailing colon (`"Summary of Actual Duties:"`)
+  because `bulletField` always appended `": "` — now suppressed when there is no value
+
+> **This note was wrong — corrected in Phase 18.** The seeded WES rows did use the retired
+> PDS-Section-V shape, but the effect was **not** "open the form empty": `accomplishments` was
+> undefined and the render called `.map()` on it, so the page crashed to a blank screen. Both the
+> seed and the page were fixed in Phase 18.
+
+---
+
+## Phase 12: Application Status Trail — COMPLETED
+
+Surfaces the existing audit log as a per-application timeline. `GET /applications/:id/history` and a
+`HistoryTimeline` component already existed, but the timeline was only on the **applicant's** My
+Applications page — HR and office admins, who actually drive the pipeline, had no trail.
+
+- [x] `features/applications/ApplicationHistoryTimeline.tsx` — timeline plus its label maps
+  (`actionLabel`, `actionToStatus`, `statusDotColor`, `formatStatus`) extracted out of
+  `MyApplicationsPage` into one shared component (~130 duplicated lines removed)
+- [x] **Status History** card on `ApplicationDetailPage`, directly under Application Information
+- [x] Status mutation now invalidates `['application-history', id]` — without it a change wouldn't
+  appear in the trail until a page reload
+- [x] **Security fix**: `getApplicationHistory` only checked applicant ownership, so *any*
+  authenticated admin could read *any* application's trail, including another LGU's. Now mirrors
+  `getApplication` scoping (LGU for HR; LGU + department + not-SUBMITTED for office admins).
+  Verified live: cross-LGU read went **200 → 403**
+
+> The audit log **page** (`/admin/audit-logs`) is unchanged and remains in Administration only.
+> An RSP shortcut to it was tried and reverted — Administration is its home.
+
+---
+
+## HR Shortlisting — COMPLETED
+
+HR admins can now shortlist, not just office admins.
+
+- [x] Server: removed the explicit `LGU_HR_ADMIN + SHORTLISTED → 403` block in
+  `updateApplicationStatus`
+- [x] Client: `STATUS_TRANSITIONS` (HR map) had **no `ENDORSED` entry at all**, so HR saw no action
+  on an endorsed application — added `ENDORSED: ['SHORTLISTED', 'REJECTED']`
+- [x] Office admin restrictions unchanged (own department, endorsed+, still limited to
+  `SHORTLISTED`/`REJECTED`)
+- [x] `ProcessFlow.md` Step 6 + role-permissions table updated
+
+**Why:** only SHORTLISTED applicants can be assigned to an interview, so an office that hasn't
+screened yet left applicants stranded with no way for HR to move them forward. Shortlisting was the
+only office-exclusive right — HR could already reject.
+
+---
+
+## UI Refresh & Fixes
+
+### Login page (`features/auth/LoginPage.tsx`)
+- [x] Left panel changed from a solid `emerald-600→green-800` slab to a light
+  `emerald-50 → white → teal-50` wash with green accents; all text/logo/dividers recoloured
+- [x] `lg:border-r lg:border-emerald-100` added — both halves are light now, so the split needs it
+- [x] The two module cards carry the tint: RSP emerald, L&D teal (gradient + icon chip + text)
+- [x] **No hover effects on the module cards** — they are descriptive tiles, not controls
+
+### Module launcher (`features/modules/ModuleLauncherPage.tsx`)
+- [x] Same light wash + tinted RSP/L&D cards, via a `CARD_STYLES` map mirroring the login `pillars`
+- [x] Locked cards switched from `opacity-60` to explicit **neutral grey** — dimming read as washed
+  out on a light background; availability now reads as colour vs. no colour
+- [x] LGU logo `rounded-2xl` → `rounded-full` (both the uploaded-logo and Shield-fallback branches)
+
+> `CARD_STYLES` and the login page's `pillars` hold duplicate colour values kept in sync by hand.
+> Lift into `lib/modules.ts` if they drift.
+
+### Fixes
+| Issue | Root cause | Fix |
+|-------|-----------|-----|
+| PDS requirement demanded a manual upload instead of auto-attaching | `isPdsRequirement` excluded any label containing "work experience" — but the CSC default label is *"Personal Data Sheet with Work Experience Sheet"*, so the guard fired on the very requirement it was meant to protect | Dropped the exclusion; a standalone WES label matches neither PDS keyword anyway |
+| Interview scheduling returned a raw 400 | `handleCreate` validated position + date but never checked that an applicant was selected, so it posted `applicationIds: []` | Client-side guard + **Schedule** button disabled while nothing is selected, with a selected count on the label |
+| Toasts appeared top-right and could not be dismissed | `<Toaster position="top-right" richColors />` | `position="bottom-right"` + `closeButton` (single mount in `App.tsx`, covers every toast) |
+| Applicant landed on the dashboard after submitting | `ApplyPage` navigated to `/applicant/dashboard` | Navigates to `/applicant/applications`; the existing `invalidateQueries(['my-applications'])` fires first so the new row is present on arrival |
+
+---
+
+## Phase 13: Dynamic Comparative Assessment — COMPLETED
+
+The assessment was 7 hardcoded `Decimal` columns. It is now a **user-defined factor template** with
+grouped factors, per-group subtotals, and auto-adjusting totals — modelled on the CSC Comparative
+Assessment Form workbook.
+
+### The computation (taken from the reference workbook's formulas)
+```
+factor equivalent % = maxWeight x rating%       (G13 = $G$11 * 0%)
+group subtotal      = sum of equivalents        (H14 = SUM(G13:I13))
+group points        = subtotal x group points   (G15 = H14 * 40)
+TOTAL               = sum of group points       (L15 = SUM(F15:K15))
+```
+One uniform rule covers everything: a single-factor group is the degenerate case where
+`maxWeight = 1`, so **"subtotal on the header" falls out for any group with >1 factor** — no
+special-casing. Lives in `server/src/config/assessmentDefaults.ts` (`computeAssessment`), mirrored
+for live display only in `client/src/lib/assessment.ts`.
+
+### Default template (CSC), 100 points
+| Group | Points | Factors (max weight) |
+|-------|-------:|----------------------|
+| I | 25 | PERFORMANCE (1) |
+| II — ETE | 40 | EDUCATION (0.35), Relevant TRAINING (0.30), Relevant EXPERIENCE (0.35) |
+| III | 30 | PSYCHO-SOCIAL ATTRIBUTES & POTENTIAL (1) |
+| IV | 5 | OUTSTANDING ACCOMPLISHMENTS (1) |
+
+### Database
+- [x] `assessment_groups` — `code`, `label`, `points`, `sortOrder`. **`positionId` NULL = the LGU's
+  reusable default; set = the snapshot frozen onto that position**
+- [x] `assessment_factors` — `label`, `maxWeight`, cascade-deleted with the group
+- [x] `assessment_scores` — the 7 fixed columns **dropped**; replaced by `factorScores Json`
+  (`{ "<factorId>": ratingPercent }`). `totalScore` retained
+- [x] `db push` + `prisma generate`
+
+> **Why `totalScore` was kept:** Selection, ranking (`orderBy: { totalScore: 'desc' }`), and the
+> qualify-gating all read it. Keeping it meant those paths needed **no changes at all**.
+
+### Server
+- [x] `config/assessmentDefaults.ts` — `DEFAULT_ASSESSMENT_TEMPLATE` + `computeAssessment`
+- [x] `controllers/assessmentTemplate.controller.ts` — LGU template get/save, position template
+  get/save. `GET` seeds (LGU) or snapshots (position) on first read
+- [x] `saveAssessmentScore` rewritten — takes `factorScores`, ignores ids not on the position,
+  rejects ratings outside 0–100, and **always computes the total server-side**
+- [x] Routes under `/api/assessments/template/*`, registered **before** the score routes
+
+### Client
+- [x] `AssessmentPage` rebuilt — two-row grouped header (group code/label/points spanning its
+  factors), per-factor percentage inputs, **subtotal column on multi-factor groups** showing both
+  the subtotal and its points, live TOTAL, ranking by live total
+- [x] `FactorEditor` — add/remove groups and factors, edit code/label/points/weights, with warnings
+  when group points ≠ 100 or a group's weights ≠ 1
+- [x] `ApplicationDetailPage` assessment grid now renders factors from the position's template
+  instead of 7 hardcoded labels
+- [x] Types: `AssessmentGroup`, `AssessmentFactor`; `AssessmentScore.factorScores`
+
+#### Phase 13 refinements (post-review)
+- [x] **Weights display as percentages** — `100%` / `35%` instead of `w 1` / `w 0.35`, and the
+  editor field is now "Max weight %" taking `35` rather than `0.35`. Stored values are unchanged:
+  `toPercent`/`fromPercent` convert at the UI boundary only, and the API still stores fractions.
+  The per-group warning threshold moved from 1 to 100 accordingly
+- [x] **Ranking settles on save, not on keystroke** — the table sorts by the *saved* total from
+  `['assessments']`, so rows no longer jump under the cursor while typing. Saving invalidates the
+  query, the refetch lands, and the order re-settles then (no extra state needed)
+- [x] **"Save All & Rank" bar** — appears once anything is edited, shows the unsaved count, saves
+  rows **sequentially** with a live `Saving n of N…` progress bar (parallel writes would make the
+  counter jump), then re-ranks. Per-row save button retained for single corrections
+- [x] **Score bar** in the TOTAL column (total ÷ template max points) and an amber "unsaved"
+  marker on edited rows
+
+### Key design decisions
+| Decision | Rationale |
+|----------|-----------|
+| LGU default → **snapshot per position** | Editing the LGU template must not silently rescore assessments already in progress |
+| Template edits **carry ratings over by factor label** | Replacing the tree mints new factor ids, which would orphan every rating. Matching on label keeps scores intact when adding/reordering factors |
+| Total **always** computed server-side | The client never asserts a total, so a stale client template can't corrupt the ranking |
+| Ratings are **percentages (0–100)**, not raw points | What the workbook does. Inverts the old data entry (HR used to type points like `14.50`) |
+
+### Seed
+- [x] `makeAssessment()` + `ensureAssessmentTemplate()` helpers; all 8 seeded assessments rewritten
+  as percentage ratings keyed by factor label
+- [x] `assessmentGroup.deleteMany()` added to the FK-safe cleanup order
+
+### Verification (live)
+| Check | Result |
+|-------|--------|
+| Seeded score (Pedro) | `89.41` = hand-computed `89.41` |
+| New score via API | `66.4` = expected `66.4` |
+| Add factor + rebalance weights | ids `19→25`, ratings carried by label, new factor 0, total `62.0` = expected |
+| `maxWeight: 5` / `rating: 150` | 400 on both |
+| Client typecheck + `vite build` | Clean |
+
+> **Not verified:** the page itself hasn't been opened in a browser — the grouped header and the
+> factor editor are UI-only surfaces that the API tests don't exercise.
+
+> **Migration note:** old totals exceeded 100 (e.g. `102.50`), which the new template cannot
+> produce. Any assessment data predating this phase is not comparable to post-phase totals.
+
+---
+
+## Phase 14: HRMPSB Signatories & Comparative Assessment PDF — COMPLETED
+
+### 14A — HRMPSB Signatories module (Administration)
+The signature block on the assessment form is LGU-level data reused by every generated form, so it
+is managed in Administration rather than hardcoded in the PDF.
+
+- [x] `psb_members` — `name`, `designation` (government post), `psbRole` (board role),
+  `type`, `sortOrder`, `isActive`, scoped by `lguId`
+- [x] `SignatoryType` enum: **`PSB_MEMBER`** (the board signature row) and **`PREPARED_BY`**
+  (the "Prepared by:" block at the foot) — the form has these as two separate blocks
+- [x] `sortOrder` fixes the left-to-right print order, so the Chairperson lands first
+- [x] `psbMember.controller.ts` + `/api/psb-members` CRUD; super admins may target any LGU via
+  `?lguId=`, everyone else is pinned to their own
+- [x] Client `features/psb/PsbMemberPage.tsx` at `/admin/psb-members` — two tables (members /
+  prepared by), quick-pick buttons for the four standard roles, LGU filter + selector for super
+  admin, `isActive` to retire a member without deleting history
+- [x] Sidebar: "HRMPSB Signatories" before Audit Logs (`module: 'ADMIN'`)
+
+> **Route asymmetry (deliberate):** reads are open to any authenticated LGU admin, writes require
+> `requireLguAdmin`. The assessment PDF needs the signatory block and generates from **RSP**, so
+> gating reads behind Administration would have broken it.
+
+**Verified live:** 6 signatories added (201 ×6, correct order/grouping); cross-LGU edit → 403;
+office admin create → 403; empty name → 400.
+
+### 14B — Comparative Assessment Form PDF
+- [x] `lib/generateComparativeAssessment.ts` — landscape folio (936×612), laid out from the
+  reference workbook. Split into `buildComparativeAssessmentDoc()` (pure) and
+  `generateComparativeAssessment()` (saves), so the layout can be rendered headlessly
+- [x] Header block: Position & SG, Level, Education, Experience, Training, Eligibility on the left;
+  Item No, Monthly Rate, Date of Publication, Office on the right
+- [x] Table: CANDIDATE/S · GENDER · ELIGIBILITY · grouped factor columns · TOTAL POINTS · REMARKS,
+  with the group header spanning its factors and a Maximum Percentage Weight row
+- [x] **Four rows per candidate**, mirroring the workbook: identity → Equivalent Percentage Weight
+  → Total → Equivalent Points Score
+- [x] **Subtotal is not a column** — it prints merged across the group's factor columns, as in the
+  source (`H14 = SUM(G13:I13)` sits under the EDUCATION/TRAINING/EXPERIENCE span). Single-factor
+  groups leave that row blank
+- [x] Weight rows print as **percentages** (`35%`, `97.00%`, `94.75%`); points stay plain numbers
+  (`24.25`, `95.25`). Two formatters: fixed 2dp for computed values so columns align, trimmed for
+  max weights so `35%` doesn't read as `35.00%`
+- [x] HRMPSB signature block (3 across) + "Prepared by:", both from the signatories module
+- [x] **Export PDF** button on the assessment page — pulls signatories and each applicant's PDS
+  (for gender + eligibility, which the assessment endpoint doesn't carry), exports in ranked order
+
+#### Fixed during review
+| Issue | Fix |
+|-------|-----|
+| Long eligibility text spilled past its cell border | `cell()` gained `maxLines` — clips by the caller's limit **and** by what physically fits, with an ellipsis; identity row heightened |
+
+**Verified:** rendered headlessly against real seeded data and visually inspected across three
+iterations. Arithmetic reads correctly off the page — Juan: `24.25 + 37.90 + 28.50 + 4.60 = 95.25`
+with the ETE subtotal `94.75%` merged under its group.
+
+#### Judgment calls worth revisiting
+| Call | Note |
+|------|------|
+| **Level is derived**, not stored | SG ≥ 11 → "Second", below → "First". A heuristic — needs a real field if your LGU classifies differently |
+| Export uses **on-screen** ratings | Includes unsaved edits. Could instead refuse to export while dirty, or export only saved values |
+| Max weights print as `%` | Deviates from the workbook's literal `0.35`, for consistency with the UI |
+
+### 14C — Interviews list
+- [x] Actions column with an `Eye` view button (`/rsp/interviews/:id`), matching the Training list.
+  `stopPropagation()` on the button — the row already navigates, so without it the click fires
+  twice and back needs two presses. Loading/empty `colSpan` 5 → 6
+
+### Seed
+- [x] 7 Lapu-Lapu HRMPSB signatories (6 members + 1 prepared by); `psbMember.deleteMany()` added to
+  the FK-safe cleanup order
+
+> **Names are invented.** The designations are genuine city-level posts, but the names are
+> placeholders — not actual serving Lapu-Lapu officials. Only Lapu-Lapu has signatories; the other
+> three LGUs would print an empty signature block.
+
+> **Not verified:** the Export button in a live browser, and multi-page behaviour when candidates
+> overflow a page.
+
+---
+
+## Phase 15: HRMPSB Certification of Qualified Applicants — COMPLETED
+
+**PSB Certification** button on each position card in Selection (`/rsp/selection`), generating the
+board's certification PDF. Closes the Phase 5 deferred item "Generate Certificate of Qualified
+Applicants".
+
+### Layout (from the reference certification)
+LGU seal + `Republic of the Philippines` / LGU name / `HUMAN RESOURCE MERIT PROMOTION & SELECTION
+BOARD` → spaced `C E R T I F I C A T I O N` → the R.A. No. 7160 paragraph naming the **position**
+and **item number in bold** → numbered applicants in rank order → `x – x – x – x – x` →
+place-and-date line → signature block: chairperson centred, remaining members two-up.
+
+### Client
+- [x] `lib/generatePsbCertification.ts` — portrait letter (612×792), Times. Split into
+  `buildPsbCertificationDoc()` (pure) and `generatePsbCertification()` (saves) for headless render
+- [x] Ranking comes free: `/assessments/qualified` already sorts by `totalScore` desc
+- [x] Signatories from the Phase 14 module; chairperson detected by `/chair/i` on `psbRole`, and
+  `psbRole` is shortened at the comma (`Chairperson, HRMPSB` → `Chairperson`) to match the form
+- [x] `absentIds` renders the `***ABSENT***` marker above a member — **supported by the generator
+  but not yet exposed in the UI** (no picker; generates with everyone present)
+- [x] Middle initials pulled from each applicant's PDS; failure is swallowed (cosmetic only)
+- [x] `lib/imageToPng.ts` — fetches the LGU seal and returns a **PNG data URI**
+
+### Two rules that are enforced twice, on purpose
+| Rule | Where |
+|------|-------|
+| **Top 5 applicants only** | `MAX_CERTIFIED` in `SelectionPage` **and** `MAX_APPLICANTS` in the generator — the cap is a property of the document, so any future caller inherits it |
+| Seal failure must not block the document | `fetchImageAsPngDataUrl` returns null on any error, **and** `addImage` is wrapped in try/catch |
+
+### Why the logo needs converting
+LGU logos are stored as **WebP** (Sharp, 200×200) and jsPDF's `addImage` supports PNG/JPEG only, so
+passing the stored file directly fails. `imageToPng` draws it through a canvas — via an **object
+URL** rather than a remote `<img>` src, which keeps the canvas untainted so `toDataURL()` doesn't
+throw a security error.
+
+### Fixed during review
+| Issue | Fix |
+|-------|-----|
+| `Civil Engineer III , Item No.` — stray space before the comma | The paragraph mixes bold/normal mid-sentence, which `splitTextToSize` can't do, so it is composed word by word; a token beginning with punctuation now pulls back one space width |
+| Seal overlapped the "H" of the board title | Logo reduced to 50pt at `MARGIN - 22` |
+
+### Verification
+- Rendered headlessly and visually inspected across three iterations
+- **Top-5 cap proven**: 7 applicants in → 5 listed, correct order by score
+- **Seal proven** with a synthetic PNG
+
+> **Not verified:** no seeded LGU has a logo uploaded, so the real WebP → fetch → canvas → PNG path
+> has never run in a browser. Upload a logo in LGU Management and generate once to confirm.
+> The button itself is also unverified in a live browser.
+
+### Placeholders worth revisiting
+| Field | Current | Note |
+|-------|---------|------|
+| Place line | LGU name | The reference reads "Cebu Capitol, Cebu City" — a venue, probably belongs on the LGU record |
+| Board date | blank (`________________`) | The date the board convened; not stored anywhere |
+| Signature block overflow | members past the page are dropped | No pagination; fine at 6–7 members, breaks beyond that |
+
+---
+
+## Phase 16: Vacancy Guard & CSC Appointment Forms — COMPLETED
+
+### 16A — Vacancy slot guard (bug fix)
+Appointments could exceed a position's vacancy slots. Two independent causes:
+
+| Cause | Detail |
+|-------|--------|
+| Client miscounted | `getSelectedCount` counted only `SELECTED`. **APPOINTED applicants weren't counted at all**, so a position with 2 slots and 1 already appointed still read as having room |
+| Server never checked | `createAppointment` counted appointed applicants *after* inserting, purely to flip the position to FILLED. Nothing rejected an overfill |
+
+- [x] Server: vacancy check **inside the `$transaction`** before insert — outside it, two concurrent
+  requests could both pass and overfill. Throws `SLOTS_FULL` → 400 with an actionable message
+- [x] Client: `getAppointedCount`, `slotsFilled` / `slotsRemaining` / `isPositionFull`. Header now
+  reads `2 / 2` + "All slots filled"; the warning compares against *remaining* slots; the Appoint
+  button is disabled with a tooltip when full
+- [x] `selectApplicant` left unguarded on purpose — selecting alternates beyond the slots is
+  legitimate; **appointment is the binding act**
+
+**Verified live** (Cebu City, Administrative Officer V, 2 slots): appoint #2 → 201; select a third
+→ 200; appoint the third → **400**; position auto-flipped to FILLED. Before the fix that last call
+returned 201.
+
+> **Pre-existing overfill remains**: Lapu-Lapu's Civil Engineer III has **3 appointments on 2
+> slots**. The guard prevents new overfills but does not repair existing data, and there is no
+> revoke-appointment endpoint.
+
+### 16B — CS Form No. 1: Appointment Transmittal and Action Form
+Built from appointments with status **COMPLETED** — which is precisely "requirements completed",
+since an appointment only reaches COMPLETED when every final requirement is verified.
+
+- [x] `lib/generateAppointmentTransmittal.ts` — landscape folio, 2 pages. Page 1: 17-column table
+  with three-tier header (NAME OF THE APPOINTEE/S over Last/First/Ext/Middle; PUBLICATION over
+  Date/Mode; CSC ACTION over four), **all 15 numbered rows incl. blanks**, HRMO certification,
+  remarks box. Page 2: Checklist of Common Requirements (7 items) + both certifications
+- [x] `lib/generateAppointmentTransmittalExcel.ts` — the same form as a workbook (ExcelJS +
+  file-saver, matching the CSC Batch export convention). **Every blank cell is bordered and
+  typeable** — the point of the Excel version is that much of this form is filled in by hand
+- [x] Both formats share one data-assembly path in `AppointmentsPage`; the mutation takes a
+  `'pdf' | 'excel'` argument
+- [x] Server: `openDate`/`closeDate` added to the appointments `position` select (and to the
+  `Appointment` client type) for the publication-period column
+- [x] Names come from the **PDS** (surname, middle name, extension), falling back to the account name
+
+#### Fixed during review
+| Issue | Fix |
+|-------|-----|
+| Publication period printed `02/01/2026 to` — clipped | Column widened (borrowed from Position Title), row height 14 → 16, that column dropped to 4.8pt so the range wraps |
+| Typecheck error "No constituent of type 'pdf' \| 'excel' is callable" | The mutation's `format` parameter **shadowed date-fns's `format`** used in the same closure — renamed to `fileFormat`. In plain JS this would have shipped as a runtime crash |
+
+**Verified:** PDF rendered and visually inspected; the workbook was generated and **read back** —
+2 sheets, data in the right cells, blank rows keeping their borders.
+
+### 16C — CS Form No. 4: Certification of Assumption to Duty
+- [x] `AssumptionToDutyTemplate` on the appointment detail page, following the page's existing
+  pattern (hidden JSX template + `useRef` + shared `handlePrint`), so it inherits the same print CSS
+- [x] Fills appointee name (PDS), position, office, effective date, and today's date across the
+  "Done this __ day of ____ ____" blanks; signature lines and issue date left blank
+- [x] Reproduces the footer routing block (201 file / Admin — CSC FO within 30 days / COA / CSC)
+
+> **Judgment call:** "effective" uses the **appointment date**, not the oath date. Assumption to
+> duty is legally the date the appointee reported, which is neither — but of the two we store, the
+> appointment date is the closer proxy. The CSC's 30-day deadline is counted from it, so this
+> arguably wants its own field.
+
+### 16D — CS Form 33-A replaces CS Form 33-B
+- [x] `AppointmentFormTemplate` rebuilt as **CS Form No. 33-A (Revised 2025), Regulated** — a
+  letter-style appointment instrument, not the numbered table 33-B used
+- [x] Stamp-of-receipt box, the italic form captions, compensation/status/nature-vice/Plantilla
+  lines, Appointing Officer + Date of Signing, Authorized Official with DRY SEAL, **two
+  certifications** (HRMO; Chairperson HRMPSB/Placement Committee), R.A. 7041 publication paragraph,
+  CSC Notation, Acknowledgement, copy distribution, erasure warning
+- [x] An `F` helper renders each value on a ruled line — **bold when known, blank and writable when
+  not** — so the form prints usefully either way
+- [x] Renamed across the app: button label, `ProcessFlowPage` step text, seed descriptions, and
+  `DEFAULT_FINAL_REQUIREMENTS` (new appointments get "Appointment Form (CS Form No. 33-A)";
+  existing rows keep their stored label)
+
+> **Assumption carried over from 33-B:** employment status prints a hardcoded **"Permanent"**. The
+> form offers *(Permanent, Temporary, etc.)*, so this is wrong for temporary or casual appointments
+> — it wants to be a real field on the appointment.
+
+### Data gaps these forms exposed
+None of the following exist in the model, so they print blank for manual completion:
+**Employment Status**, **Nature of Appointment** (Original/Promotion/Transfer…), the **vice** clause,
+**Publication Mode**, **three-conspicuous-places posting dates**, **HRMPSB deliberation date**, and
+every CSC Field Office column (Appointment Identification No., A/D, Date of Action, Date of Release).
+
+> **Not verified:** none of the four form buttons has been clicked in a live browser; print-preview
+> layout and Excel's own print pagination are unchecked. The transmittal prints only the first 15
+> completed appointments with no pagination.
+
+---
+
+## Phase 17: Appointment Forms as Exact-Match PDFs — COMPLETED
+
+The three appointment documents were printable HTML rendered through a print window. They are now
+jsPDF generators reproducing the CSC forms' actual appearance.
+
+- [x] `lib/generateAppointmentForms.ts` — `buildAppointmentFormDoc` (33-A), `buildOathOfOfficeDoc`
+  (CS 32), `buildAssumptionToDutyDoc` (CS 4), each split from a `generate*` save wrapper so the
+  layout can be rendered headlessly
+- [x] Shared helpers: `ruled()` (value centred on the form's ruled line — **bold when known, blank
+  and writable when not**), `boldCaption()`, `agencyHeader()`, `card()`, `greyPage()`
+- [x] Page size **612 × 936pt = 8.5 × 13in** (folio), verified from the PDF MediaBox
+- [x] The three HTML templates, their refs, and `handlePrint` were deleted — no dead code left to drift
+
+### CS Form 33-A visual structure
+The form is **a grey field inset from the page edge, with white bordered cards floating on it** —
+not a white page with grey headers.
+
+| Element | Detail |
+|---------|--------|
+| Grey field | `#A6A6A6`, inset `GREY_X = 30` / `GREY_Y = 22`, bordered; white page margin around it |
+| Page 1 | "For Regulated Agencies" boxed above the field; main card (form no., stamp caption, ruled agency lines, appointment body with bold captions, signature block); separate **CSC ACTION:** card |
+| Page 2 | Certification card (**requirements + publication paragraph + HRMO share one card**); HRMPSB Certification card; **CSC Notation grey block containing the white ruled write-in box *and* the erasure-warning card nested inside it**; copy distribution + Acknowledgement as **one white box split by a vertical divider** |
+
+CS Form 32 and CS Form 4 stay plain white — their source documents contain **no fills at all**, so
+shading them would move them away from the real forms.
+
+### How the layout was established
+The docx has **no tables** (`<w:tbl>` count = 0) — it is built from Word shapes, so `w:shd` shading
+was empty and the fills live on the shapes. Extracting shape geometry revealed the `#A5A5A5` shape
+is **577.9 × 867.9pt — the whole page**, which is what identified the grey-field-with-cards
+structure. `qlmanage -t` renders a docx to PNG, but its output was unreliable here (overlapping
+text); the user's screenshots settled the layout.
+
+> **Lesson for future CSC forms:** render the source document to an image *first*. Two rounds of
+> XML archaeology produced a layout that was structurally wrong; one screenshot corrected it.
+
+### Fixed during review (each caught by rendering and looking)
+| Issue | Fix |
+|-------|-----|
+| Plantilla Item No. printed `LLC-CE3-0` | Line was 62pt wide and `ruled()` keeps only the first wrapped line — silently truncating. Row rebalanced to 102pt at 10pt type |
+| Publication blanks ran past the card border | Flowed text replaced with hand-placed segments, each bounded by the card's inner edge |
+| Grey was full-bleed to the page edge | Inset to a bordered field with white margin; cards derive from it |
+| Page-2 stack overflowed the grey field by 14pt | CSC Notation box 150 → 118pt, 7 rules → 6. Verified arithmetically: **stack ends 896pt, field bottom 914pt, 18pt clearance** |
+| `Certified True Copy - for the Civil Service Commission` crossed the divider | Copy block dropped to 9pt |
+| `setLineDashPattern` not in jsPDF's public types | Dashed DRY SEAL box → solid grey |
+
+> **Known remaining:** on page 1, `with Plantilla Item No.` and the appointment-effect sentence
+> nudge a few points past the card's right edge after the cards narrowed. Hand-positioned lines
+> that still want reflowing.
+
+> **Not verified:** the three buttons in a live browser. The generators are pure and were rendered
+> headlessly across ~8 iterations, so risk is low.
+
+
+
+---
+
+## Phase 18: Lapu-Lapu-Only Seed, Logout Destination, WES Crash Fix — COMPLETED
+
+### 18A — Seed reduced to a single LGU
+- [x] Removed **Cebu City, Mandaue, Cebu Province** and Cebu City's entire pipeline;
+  `seed.ts` 3,290 → ~2,460 lines
+- [x] Lapu-Lapu keeps the full journey: applicant → application → endorse → shortlist → interview →
+  assessment → qualify → select → appoint → final requirements, with the audit trail
+- [x] Added **3 SUBMITTED applications** — the entry state was missing entirely, so the Applications
+  screen had nothing awaiting HR review
+
+**Result (verified live):** 1 LGU; 12 applications covering **every status**; 13 positions across 4
+publications; 3 interviews, 4 assessments, 2 appointments, 7 signatories, 3 trainings, 86 audit logs.
+`cebucityhr` / `mandauehr` / `cebuprovhr` all return **401**.
+
+Trail depth scales with pipeline position — 2 entries at ENDORSED, 9 at APPOINTED (SUBMIT → ENDORSE
+→ SHORTLIST → CREATE_INTERVIEW → COMPLETE_INTERVIEW → SAVE_ASSESSMENT_SCORE → QUALIFY → SELECT →
+CREATE_APPOINTMENT), correctly attributed to applicant / office admin / HR.
+
+> **Lost with the other LGUs:** the per-LGU module licensing demo (Mandaue was the RSP-only
+> example) and the multi-LGU login demo. Both features still work — nothing seeded exercises them.
+
+> **Two helpers had to be restored** after the cut: `applicantPassword` (defined in the Cebu
+> Province block) and `makeAssessment`/`ensureAssessmentTemplate` (defined in the Cebu City
+> pipeline). Neither is a compile error — both surfaced only at seed runtime.
+
+### 18B — Sign-out returns to the LGU's branded login
+An LGU user signing out landed on the generic `/` instead of `/{slug}/login`.
+
+- [x] `logoutDestination(user, lastLguSlug)` in `lib/modules.ts`
+- [x] **`lastLguSlug` persisted in the auth store** — set on `setAuth`, deliberately *not* cleared on
+  logout, same as `moduleMemory`
+- [x] Applied to all four paths: Header sign-out, launcher sign-out, axios session-expiry, and
+  `ProtectedRoute`
+
+> **The first attempt didn't work, and the reason matters.** `logout()` flips `isAuthenticated`,
+> React re-renders, and **`ProtectedRoute` returns `<Navigate to="/" replace />` in the same tick**,
+> overriding the caller's `navigate()`. `ProtectedRoute` — not the caller — decides where a
+> signed-out user lands, and by then `user` is null. Hence the persisted slug.
+
+Side benefit: opening a protected URL in a fresh tab now lands on the LGU's branded login too.
+
+### 18C — WES page crashed on legacy data
+- [x] `normaliseEntry()` in `WESFormPage` coerces any stored entry onto a complete empty entry and
+  guarantees `accomplishments` is a non-empty array; `?? []` guards at both render sites
+- [x] Seed rewritten to the current WES shape (old duty lists folded into `summaryOfDuties`)
+
+> **Converting the seed took three attempts.** A naive `'([^']*)'` regex over the source split on
+> the escaped apostrophes in `Mayor\'s Office` and `Provincial Treasurer\'s Office`, producing
+> truncated strings and an unparseable file. Fixed by pulling the original text from
+> `git show HEAD:` and re-parsing with `'((?:[^'\\]|\\.)*)'`, re-emitting as double-quoted
+> literals. Naive quote-matching over source code breaks on real-world names.
+
+### 18D — LGU logo rounded on the branded login
+- [x] `rounded-2xl` → `rounded-full` on both the uploaded-logo `<img>` and the Shield fallback,
+  matching the module launcher

@@ -31,8 +31,11 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${data.token}`;
         return api(originalRequest);
       } catch (refreshError) {
+        // Same rule on session expiry: LGU users land back on their branded login.
+        const state = useAuthStore.getState();
+        const slug = state.user?.lgu?.slug ?? state.lastLguSlug;
         useAuthStore.getState().logout();
-        window.location.href = '/';
+        window.location.href = slug ? `/${slug}/login` : '/';
         return Promise.reject(refreshError);
       }
     }

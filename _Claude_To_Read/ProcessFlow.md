@@ -10,7 +10,7 @@ sidebar swaps modules without re-logging.
 |---------|-----------|-------|---------------|
 | **RSP** — Recruitment, Selection & Placement | `/rsp` | Dashboard, Positions, Publications, Applications, Interviews, Selection, Appointments, Reports | SUPER_ADMIN, LGU_HR_ADMIN, LGU_OFFICE_ADMIN |
 | **L&D** — Learning & Development | `/lnd` | Dashboard, Training, Reports | SUPER_ADMIN, LGU_HR_ADMIN |
-| **Administration** | `/admin` | Dashboard (super admin), LGU Management, Departments, Users, Audit Logs | SUPER_ADMIN, LGU_HR_ADMIN |
+| **Administration** | `/admin` | Dashboard (super admin), LGU Management, Departments, Users, HRMPSB Signatories, Audit Logs | SUPER_ADMIN, LGU_HR_ADMIN |
 | Applicant portal | `/applicant` | Dashboard, PDS, My Applications | APPLICANT |
 
 Notes:
@@ -23,6 +23,13 @@ Notes:
 - A SUPER_ADMIN can license RSP and/or L&D per LGU (LGU Management → Enabled Modules). An LGU
   with L&D disabled hides the module from its staff (locked launcher card) and the server rejects
   its L&D API calls with 403. Administration is never licensable.
+  *(Since Phase 18 the seed contains only Lapu-Lapu, which licenses both — no seeded LGU
+  demonstrates a disabled module any more.)*
+- **Signing out** returns an LGU user to their own branded login (`/{lgu-slug}/login`), not the
+  generic one. Applicants and super admins have no LGU, so they get `/`.
+- **HRMPSB Signatories** (Administration) holds the signature block printed on the Comparative
+  Assessment Form: members with their designation and board role, plus a "Prepared by" signatory.
+  Order is explicit, and members can be deactivated rather than deleted.
 - An HR admin (or super admin) grants modules per user (User Management → Module Access). Access is
   **deny-by-default**: a user sees only the modules explicitly granted, within the LGU's licensing
   and their role. All three modules — RSP, L&D, and Administration — are grantable, so HR can e.g.
@@ -101,9 +108,15 @@ Notes:
    - **New user:** Register an account, then fill out PDS (CS Form 212, 8-step wizard)
    - **Returning user:** Log in (PDS already on file, editable)
 4. Applicant uploads required documents (Letter of Intent, Transcript, Eligibility Certificate, etc.)
-   - PDS requirement is auto-fulfilled if PDS is on file
-5. Submits application
+   - PDS requirement is auto-fulfilled if PDS is on file (matched on the requirement label
+     containing "PDS" / "Personal Data Sheet" — including the CSC default
+     *"Personal Data Sheet with Work Experience Sheet"*)
+5. Submits application → lands on **My Applications**, where the new row is already visible
 6. Application status: **SUBMITTED**
+
+> **Work Experience Sheet** (`/applicant/wes`) is a separate module, filled in independently of the
+> PDS — it does not read PDS data. The applicant can save it and download the CS Form 212
+> Attachment PDF at any time.
 
 ---
 
@@ -115,6 +128,8 @@ Notes:
 2. Opens an application to review:
    - PDS summary (collapsible sections)
    - Uploaded documents (downloadable)
+   - **Status History** — the audit trail for this application: every status change with actor and
+     timestamp. The applicant sees the same trail on their My Applications page.
 3. HR Admin clicks **"Endorse to Office"**
    - Application status changes: **SUBMITTED → ENDORSED**
    - Application becomes visible to the Office Admin of the assigned department
@@ -122,8 +137,8 @@ Notes:
 
 ---
 
-### Step 6: Office Admin Screens and Shortlists
-**Actor:** LGU Office Admin
+### Step 6: Office Admin (or HR) Screens and Shortlists
+**Actor:** LGU Office Admin — or LGU HR Admin
 **Module:** Applications (`/rsp/applications`)
 
 1. Office Admin sees only endorsed applications for their department
@@ -132,6 +147,10 @@ Notes:
    - Application status changes: **ENDORSED → SHORTLISTED**
 4. Office Admin can **Reject** unqualified applicants
    - Application status changes: **ENDORSED → REJECTED**
+
+> **HR can also shortlist.** Screening is normally the office's job, but HR holds the same
+> ENDORSED → SHORTLISTED / REJECTED actions so the pipeline isn't blocked when an office
+> hasn't screened yet — only SHORTLISTED applicants can be assigned to an interview.
 
 ---
 
@@ -167,10 +186,34 @@ Notes:
 **Module:** Assessment (`/rsp/assessments/:positionId`)
 
 1. After interview completion, HR Admin opens the assessment scoring page
-2. Inputs scores for each interviewed applicant across 7 criteria:
-   - Education, Training, Experience, Performance, Psychosocial Attributes, Potential, Interview
-3. System auto-computes **Total Score** and ranks applicants by total (descending)
-4. HR Admin clicks **"Qualify"** for passing applicants
+2. The page loads the position's **factor template** — snapshotted from the LGU default the first
+   time it is opened, so later template edits never disturb an assessment already in progress.
+   The CSC default is four groups totalling 100 points:
+
+   | Group | Points | Factors (max weight) |
+   |-------|-------:|----------------------|
+   | I | 25 | Performance (1) |
+   | II — ETE | 40 | Education (0.35), Relevant Training (0.30), Relevant Experience (0.35) |
+   | III | 30 | Psycho-social Attributes & Potential (1) |
+   | IV | 5 | Outstanding Accomplishments (1) |
+
+3. HR enters each factor as a **rating percentage (0–100)** per applicant, then clicks
+   **"Save All & Rank"** — the ranking is recalculated on save, not while typing
+4. System computes live, and recomputes authoritatively on save:
+   - factor equivalent % = `maxWeight × rating%`
+   - **group subtotal** = sum of its factors' equivalents — shown on the header of any group with
+     more than one factor (e.g. ETE)
+   - group points = `subtotal × group points`
+   - **Total Score** = sum of group points; applicants ranked by total (descending)
+5. **"Export PDF"** generates the **Comparative Assessment Form** — landscape folio with the
+   position header, grouped factor columns, four rows per candidate (identity → Equivalent
+   Percentage Weight → Total → Equivalent Points Score), the HRMPSB signature block, and
+   "Prepared by:". Signatories come from Administration → HRMPSB Signatories; gender and
+   eligibility come from each applicant's PDS.
+6. **"Edit Factors"** adds/removes groups and factors and adjusts points and weights for this
+   position. Existing ratings are carried across by factor name, and totals are recomputed. The
+   editor warns when group points don't total 100 or a group's weights don't sum to 1.
+7. HR Admin clicks **"Qualify"** for passing applicants
    - Application status changes: **INTERVIEWED → QUALIFIED**
    - Requires assessment score to exist (button disabled without score)
 
@@ -188,6 +231,11 @@ Notes:
 4. Clicks **"Select for Appointment"**
    - Application status changes: **QUALIFIED → SELECTED**
    - Warning shown if selections exceed vacancy slots
+5. **"PSB Certification"** on each position card generates the HRMPSB **Certification of Qualified
+   Applicants** (PDF): LGU seal and board header, the R.A. 7160 certification paragraph naming the
+   position and item number, the qualified applicants **in rank order (top 5 only)**, and the
+   signature block from Administration → HRMPSB Signatories (chairperson centred, members in two
+   columns).
 
 ---
 
@@ -200,6 +248,9 @@ Notes:
    - **Appointment Date**
    - **Oath Date** (optional)
 3. System creates the appointment:
+   - **Vacancy guard:** rejected if the position's slots are already filled. APPOINTED is the
+     binding state, so it is what counts against the slots; the Appoint button is disabled and the
+     server returns 400. Selecting more candidates than there are slots is still allowed (alternates)
    - Application status changes: **SELECTED → APPOINTED**
    - 8 default final requirements auto-created (Oath, Appointment Form, Assumption to Duty, Birth Certificate, Marriage Certificate, NBI, Medical, Barangay Clearance)
    - If all vacancy slots are filled, position status auto-changes to **FILLED**
@@ -211,9 +262,20 @@ Notes:
 **Module:** Appointment Detail (`/rsp/appointments/:id`)
 
 1. HR Admin can generate and print:
-   - **Appointment Form** (CS Form 33-B) — with LGU header, appointee details, position info, salary, signatures
+   - **Appointment Form** (CS Form No. 33-A, Revised 2025 — Regulated) — letter-style appointment
+     instrument with the stamp-of-receipt box, compensation and nature-of-appointment lines, the
+     HRMO and HRMPSB certifications, the R.A. 7041 publication paragraph, CSC Notation, and
+     acknowledgement
    - **Oath of Office** (CS Form 32) — with oath text, affiant signature, administering officer
-2. Documents are generated as printable HTML
+   - **Certification of Assumption to Duty** (CS Form No. 4, Revised 2025)
+2. Documents are generated as **PDFs** matching the CSC forms' appearance (33-A reproduces the grey
+   field with white bordered cards). Known values are pre-filled on ruled lines; anything
+   the system does not hold (nature of appointment, the vice clause, HRMPSB deliberation date)
+   prints blank for manual completion.
+
+> **Transmittal:** the Appointments list page generates **CS Form No. 1 (Appointment Transmittal and
+> Action Form)** in **PDF or Excel** for all appointments whose requirements are fully verified
+> (status COMPLETED). The Excel version leaves the manually-filled fields as empty typeable cells.
 
 ---
 
@@ -285,7 +347,7 @@ PENDING → COMPLETED (auto, when all requirements verified)
 | Publish/Unpublish Publication | View Only | Yes | - | - |
 | View Applications | View Only | Yes | Own Dept | Own |
 | Endorse to Office | - | Yes | - | - |
-| Shortlist / Reject | - | - | Yes | - |
+| Shortlist / Reject | - | Yes | Yes | - |
 | Schedule Interviews | View Only | Yes | - | - |
 | Encode Assessment | View Only | Yes | - | - |
 | Qualify Applicants | - | Yes | - | - |
