@@ -4,7 +4,7 @@
 |---------|-------|
 | Server | Ubuntu at **10.30.0.15** (shared — hosts other `apps.cebu.gov.ph` projects) |
 | Public URL | **apps.cebu.gov.ph/llcprime** (sub-path) |
-| Web server | **Apache 2.4** (same family as the ACCESS project box; `mod_rewrite`/`ssl` enabled, `AllowOverride All` on `/var/www/`) |
+| Web server | **Apache 2.4.63** — HTTPS via Let's Encrypt (cert for `apps.cebu.gov.ph`); port 80 force-redirects to 443. `mod_rewrite`/`ssl` on; **`mod_proxy` must be enabled** |
 | Deploy path | **`/var/www/html/llcprime/`** (matches the server's `/var/www/html/<app>` convention) |
 | Backend | **Node/Express on port 5010**, run as a service, proxied by Apache |
 | Database | **new `llcprime` MySQL DB + user** on the existing MySQL |
@@ -16,6 +16,15 @@
 > `sudo apache2ctl configtest` before reloading; it fails safe.
 
 Config artifacts live in the repo's **`deploy/`** directory.
+
+> **Confirmed on the box (discovery):** two live PHP apps share it — `/access` (CodeIgniter) and
+> `/prime` (Laravel). Both are served directly by Apache+PHP, so neither runs a Node process — but
+> **llcprime's backend is Node and must run as a service** (installing the `nodejs` package is
+> isolated and does not affect the PHP apps). The `:443` vhost (`prime-le-ssl.conf`) carries a
+> Let's Encrypt cert for `apps.cebu.gov.ph` and `:80` redirects to it, so **llcprime is HTTPS**
+> (`COOKIE_SECURE=true`, `CORS_ORIGIN=https://...`). Our `conf-available/llcprime.conf` uses
+> server-level `Alias`/`ProxyPass` that Apache inherits into the existing vhosts — we do **not**
+> edit `prime.conf`/`prime-le-ssl.conf` (they serve the live apps)." 
 
 > **Not PHP:** the ACCESS convention (PHP under Apache's DocumentRoot with `.htaccess`) does not
 > apply to the Node backend. PRIME's backend is a separate Node process on 5010; Apache only
