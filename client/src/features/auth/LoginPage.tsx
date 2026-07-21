@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,7 +8,7 @@ import api from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Loader2, Users, BookOpen, MapPin, Phone, Mail } from 'lucide-react';
+import { Shield, Loader2, Users, BookOpen, MapPin, Phone, Mail, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { postLoginDestination } from '@/lib/modules';
@@ -50,6 +50,29 @@ export function LoginPage() {
   const { setAuth, moduleMemory } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const redirectUrl = searchParams.get('redirect');
+
+  // Mobile-only: the branded panel stacks full-height above the form, so the form is a screen
+  // down. A floating "Sign In" scrolls to it; it auto-hides once the form is on screen so it can't
+  // overlap the form's own submit button.
+  const formRef = useRef<HTMLDivElement>(null);
+  const [showSignInFab, setShowSignInFab] = useState(false);
+
+  useEffect(() => {
+    const el = formRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowSignInFab(!entry.isIntersecting),
+      { threshold: 0.25 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollToForm = () => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Focus after the smooth scroll settles — also brings up the mobile keyboard.
+    setTimeout(() => document.getElementById('login')?.focus(), 450);
+  };
 
   const { data: lgu } = useQuery<Lgu>({
     queryKey: ['lgu', slug],
@@ -197,7 +220,7 @@ export function LoginPage() {
       </div>
 
       {/* Right — White login section */}
-      <div className="flex items-center justify-center bg-white lg:w-[480px] xl:w-[520px] px-6 py-12 lg:py-0 min-h-screen lg:min-h-0 lg:h-auto">
+      <div ref={formRef} className="flex items-center justify-center bg-white lg:w-[480px] xl:w-[520px] px-6 py-12 lg:py-0 min-h-screen lg:min-h-0 lg:h-auto">
         <div className="w-full max-w-sm">
               {/* Green accent bar */}
               <div className="h-1 w-12 rounded-full bg-gradient-to-r from-emerald-500 to-green-400 mb-6" />
@@ -278,6 +301,19 @@ export function LoginPage() {
               </div>
         </div>
       </div>
+
+      {/* Mobile-only floating "Sign In" — scrolls to the form; hidden on lg and once the form shows */}
+      <button
+        type="button"
+        onClick={scrollToForm}
+        aria-label="Go to sign in"
+        className={`lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition-all duration-300 active:scale-95 ${
+          showSignInFab ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0'
+        }`}
+      >
+        <LogIn className="h-4 w-4" />
+        Sign In
+      </button>
     </div>
   );
 }
