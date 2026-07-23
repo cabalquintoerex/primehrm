@@ -1,33 +1,26 @@
 # systemd unit for the LGU PRIME-HRM backend (Node/Express, port 5010)
 # ---------------------------------------------------------------------------
-# Install:
-#   sudo cp deploy/llcprime-api.service /etc/systemd/system/llcprime-api.service
-#   # edit User/WorkingDirectory/paths below to match the server
+#   sudo cp deploy/eprime-api.service /etc/systemd/system/eprime-api.service
+#   sudo nano /etc/systemd/system/eprime-api.service   # set User + confirm node path
 #   sudo systemctl daemon-reload
-#   sudo systemctl enable --now llcprime-api
-#   sudo systemctl status llcprime-api
-#   journalctl -u llcprime-api -f      # live logs
-#
-# Use this OR PM2 (deploy/ecosystem.config.cjs) — not both.
+#   sudo systemctl enable --now eprime-api
+#   journalctl -u eprime-api -f
 # ---------------------------------------------------------------------------
 [Unit]
-Description=LGU PRIME-HRM API (llcprime)
+Description=LGU PRIME-HRM API (eprime)
 After=network.target mysql.service
 
 [Service]
 Type=simple
-# Match an existing non-root deploy user on the box (e.g. www-data or a dedicated user)
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/html/llcprime/server
+WorkingDirectory=/var/www/html/eprime/server
 # The app loads server/.env itself via dotenv (WorkingDirectory is the server dir),
 # so no EnvironmentFile here — systemd's stricter parser would choke on the quoted
 # DATABASE_URL. dotenv handles the quotes/special chars.
-# Absolute path to node — check with `which node`; adjust if using nvm
 ExecStart=/usr/bin/node dist/app.js
 Restart=on-failure
 RestartSec=5
-# Hardening
 NoNewPrivileges=true
 ProtectSystem=full
 

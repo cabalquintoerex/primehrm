@@ -1,9 +1,12 @@
 # LGU PRIME-HRM — Linux Deployment (Ubuntu + Apache, shared server)
 
-> **✅ DEPLOYED — LIVE since 2026-07-21** at **https://apps.cebu.gov.ph/llcprime**.
-> Login verified, DB connected, HTTPS + secure cookies working, both live apps (`/access`,
-> `/prime`) undisturbed. See **[Deployment Record (as-built)](#deployment-record-as-built-2026-07-21)**
-> at the bottom for exactly what was done, the issues hit, and the open items.
+> **🔀 MIGRATING (2026-07-23):** production is moving from the 0.15 **sub-path** (`apps.cebu.gov.ph/llcprime`)
+> to a **dedicated subdomain served at root** — **https://eprime.sytes.net** on `services.cebu.gov.ph`.
+> The 0.15 setup is being torn down. **See [Migration to eprime.sytes.net](#migration-to-eprimesytesnet-root-subdomain) for the current runbook + 0.15 teardown.**
+> The original 0.15 sub-path record is kept below for history.
+
+> **First deploy (history):** 0.15 sub-path `apps.cebu.gov.ph/llcprime`, live 2026-07-21 — see
+> [Deployment Record (as-built)](#deployment-record-as-built-2026-07-21).
 
 | Setting | Value |
 |---------|-------|
@@ -252,3 +255,90 @@ sudo chown root:www-data server/.env && sudo chmod 640 server/.env
 sudo chown -R www-data:www-data server/uploads
 # NEVER run `npm run db:seed` again — it wipes the DB.
 ```
+
+---
+
+## Migration to eprime.sytes.net (root subdomain)
+
+**Target:** `services.cebu.gov.ph` (shared Ubuntu + Apache, other projects under `/var/www/html/`).
+**URL:** `https://eprime.sytes.net` (No-IP free DNS → the server's public IP). **Served at ROOT** —
+no more `/llcprime` sub-path. Naming: folder `/var/www/html/eprime`, DB/user `eprime`, service
+`eprime-api`, port 5010. Fresh demo seed.
+
+### Why this is simpler than the sub-path
+Root serving means **build the frontend WITHOUT `VITE_BASE_PATH`** (base = `/`). The base-path code
+(`lib/basePath.ts`, router basename, axios baseURL) all no-op at root, so there's nothing sub-path
+specific. Isolation from the other projects is by **hostname** (dedicated vhost), cleaner than the
+sub-path alias.
+
+### 0. Discovery on the new server (read-only)
+```bash
+hostname -I; lsb_release -d; apache2 -v
+apache2ctl -M 2>/dev/null | grep -E 'proxy_module|proxy_http|rewrite|ssl'
+node -v || echo "NODE NOT INSTALLED"
+mysql --version
+which certbot || echo "certbot missing (install: sudo apt-get install -y certbot python3-certbot-apache)"
+sudo ss -tlnp | grep ':5010' || echo "5010 free"     # pick another port if taken
+ls -la /var/www/html/
+# confirm the DNS resolves to THIS box before certbot:
+dig +short eprime.sytes.net ; curl -s ifconfig.me; echo
+```
+
+### 1–5. Same as the 0.15 runbook, with these changes
+- **Clone** to `/var/www/html/eprime` (new deploy key for the box, as on 0.15).
+- **DB:** `deploy/create-db.sql` (now `eprime`). `.env` from `deploy/server.env.example` — already set
+  to `CORS_ORIGIN=https://eprime.sytes.net`, `COOKIE_PATH=/`, `COOKIE_SECURE=true`.
+- **Frontend build:** `npm run build` — **no `VITE_BASE_PATH`** (root).
+- **Service:** `deploy/eprime-api.service` → `/etc/systemd/system/eprime-api.service`.
+
+### 6. Apache vhost + HTTPS
+```bash
+sudo a2enmod proxy proxy_http rewrite
+sudo cp /var/www/html/eprime/deploy/apache-eprime.conf /etc/apache2/sites-available/eprime.conf
+sudo a2ensite eprime
+sudo apache2ctl configtest && sudo systemctl reload apache2      # HTTP works now
+# then issue the cert (DNS must already point here, port 80 open):
+sudo certbot --apache -d eprime.sytes.net                        # adds eprime-le-ssl.conf + HTTP→HTTPS
+```
+
+### 7. Verify + seed
+```bash
+curl -skI https://eprime.sytes.net/ | head -3
+curl -sk  https://eprime.sytes.net/api/health
+cd /var/www/html/eprime/server && npm run db:seed     # once, fresh
+```
+Browser: `https://eprime.sytes.net/` → login; hard-refresh an inner route; upload a logo.
+
+### Permissions (as on 0.15)
+```bash
+sudo chown root:www-data /var/www/html/eprime/server/.env && sudo chmod 640 /var/www/html/eprime/server/.env
+sudo chown -R www-data:www-data /var/www/html/eprime/server/uploads
+```
+
+---
+
+## Teardown of the 0.15 sub-path deployment (do LAST, after eprime is verified)
+
+On `10.30.0.15`:
+```bash
+# stop + remove the service
+sudo systemctl disable --now llcprime-api
+sudo rm /etc/systemd/system/llcprime-api.service
+sudo systemctl daemon-reload
+
+# remove the Apache conf (additive conf-available)
+sudo a2disconf llcprime
+sudo rm /etc/apache2/conf-available/llcprime.conf
+sudo apache2ctl configtest && sudo systemctl reload apache2
+
+# drop the database + user
+sudo mysql -e "DROP DATABASE IF EXISTS llcprime; DROP USER IF EXISTS 'llcprime'@'localhost'; FLUSH PRIVILEGES;"
+
+# remove the code + the deploy-key alias
+sudo rm -rf /var/www/html/llcprime
+#   in /root/.ssh/config remove the 'Host github.com-primehrm' block, then:
+sudo rm -f /root/.ssh/github_primehrm_deploy /root/.ssh/github_primehrm_deploy.pub
+#   (optional) remove the deploy key from the primehrm repo's GitHub Settings → Deploy keys
+```
+Verify `/access` and `/prime` still load after the Apache reload — the llcprime conf was additive, so
+they should be unaffected.
