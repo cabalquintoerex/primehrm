@@ -1544,3 +1544,29 @@ Side benefit: opening a protected URL in a fresh tab now lands on the LGU's bran
 - Redeploy runs as root → re-apply `.env`/`uploads` perms after `git pull`.
 - Deployed from branch `feat/rsp-appointment-forms-and-single-lgu-seed`; merge to `main` when ready.
 
+---
+
+## Phase 20: Migration to eprime.sytes.net — COMPLETED (2026-07-23)
+
+Production **moved** from the 0.15 sub-path (`apps.cebu.gov.ph/llcprime`) to a **dedicated subdomain
+at root**: **https://eprime.sytes.net** on the `icto` box (`122.54.5.140`). Simpler than the
+sub-path — root serving means the frontend builds **without `VITE_BASE_PATH`** (base-path code
+no-ops). Full as-built + gotchas in `_Claude_To_Read/Deployment.md`.
+
+- [x] Dedicated name-based Apache vhost (`deploy/apache-eprime.conf`) + Let's Encrypt via certbot;
+  isolation by hostname
+- [x] `eprime` DB/user, `eprime-api` systemd (www-data, system `/usr/bin/node`, port 5010)
+- [x] Lapu-Lapu-only demo seed; login + HTTPS + secure cookies verified
+- [x] Configs retargeted: `deploy/{apache-eprime.conf,eprime-api.service}`, env
+  (`CORS_ORIGIN=https://eprime.sytes.net`, `COOKIE_PATH=/`, `COOKIE_SECURE=true`), create-db → eprime
+- [x] Cookie `secure` flag env-driven (`COOKIE_SECURE`) — no code change between HTTP/HTTPS boxes
+
+### Box-specific gotchas (recorded)
+- MySQL root uses **password auth** (`-u root -p`), and **`validate_password` requires a special
+  char** → use URL-safe specials (`_-.`); URL-encode any `@`/`!` in `DATABASE_URL`.
+- Node is under **root's nvm** (unreachable by `www-data`); service uses system `/usr/bin/node`.
+
+### Remaining
+- **Tear down 0.15** (`llcprime` service/conf/DB/folder/deploy-key) — steps in Deployment.md.
+- Deployed from branch `feat/rsp-appointment-forms-and-single-lgu-seed`; merge to `main` when ready.
+

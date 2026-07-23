@@ -1,12 +1,13 @@
 # LGU PRIME-HRM — Linux Deployment (Ubuntu + Apache, shared server)
 
-> **🔀 MIGRATING (2026-07-23):** production is moving from the 0.15 **sub-path** (`apps.cebu.gov.ph/llcprime`)
-> to a **dedicated subdomain served at root** — **https://eprime.sytes.net** on `services.cebu.gov.ph`.
-> The 0.15 setup is being torn down. **See [Migration to eprime.sytes.net](#migration-to-eprimesytesnet-root-subdomain) for the current runbook + 0.15 teardown.**
-> The original 0.15 sub-path record is kept below for history.
+> **✅ LIVE (2026-07-23):** production runs at **https://eprime.sytes.net** — a dedicated subdomain
+> served at **root** on the `icto` box (`122.54.5.140`). Login, HTTPS (Let's Encrypt), secure
+> cookies all verified. The **0.15 sub-path** deployment (`apps.cebu.gov.ph/llcprime`) is being
+> **torn down** — steps below. See **[Migration to eprime.sytes.net](#migration-to-eprimesytesnet-root-subdomain)**
+> for the runbook + as-built, and [Teardown of 0.15](#teardown-of-the-015-sub-path-deployment-do-last-after-eprime-is-verified).
 
-> **First deploy (history):** 0.15 sub-path `apps.cebu.gov.ph/llcprime`, live 2026-07-21 — see
-> [Deployment Record (as-built)](#deployment-record-as-built-2026-07-21).
+> **History:** first deploy was the 0.15 sub-path `apps.cebu.gov.ph/llcprime` (live 2026-07-21) —
+> see [Deployment Record (as-built)](#deployment-record-as-built-2026-07-21).
 
 | Setting | Value |
 |---------|-------|
@@ -314,6 +315,29 @@ Browser: `https://eprime.sytes.net/` → login; hard-refresh an inner route; upl
 sudo chown root:www-data /var/www/html/eprime/server/.env && sudo chmod 640 /var/www/html/eprime/server/.env
 sudo chown -R www-data:www-data /var/www/html/eprime/server/uploads
 ```
+
+### eprime as-built (confirmed on the box, 2026-07-23)
+| | |
+|---|---|
+| Host | `icto` / **`122.54.5.140`** (public), Ubuntu 25.04, Apache 2.4.63, MySQL 8.4.7 |
+| URL | **https://eprime.sytes.net** (No-IP → 122.54.5.140), served at **root** |
+| Modules | `proxy`, `proxy_http`, `rewrite`, `ssl` **already enabled** — no `a2enmod` needed |
+| Node | **already present**: system `/usr/bin/node` v20.19.5 (also root nvm). Service uses `/usr/bin/node` |
+| Backend | `eprime-api` systemd, `www-data`, port **5010** (ambulancetracker owns 5000) |
+| Frontend | `npm run build` (**no `VITE_BASE_PATH`**) → root-relative assets |
+| Apache | dedicated name-based vhost `eprime.conf` (:80) + certbot-generated `eprime-le-ssl.conf` (:443). Isolation by **hostname** — the `icto`/`apps`/`services` vhosts untouched |
+| DB | `eprime` + `eprime@localhost`; schema `prisma db push`; Lapu-Lapu-only demo seed |
+| Other apps on box | `aidmap`, `ambulancetracker` (Node on 5000, not systemd), `ictcongress2025`; vhosts for icto/apps/services.cebu.gov.ph |
+
+**Gotchas specific to this box (differ from 0.15):**
+- **MySQL root uses password auth, not socket** — `mysql -u root -p` (0.15 used bare `mysql`).
+- **`validate_password` policy requires a special char** — a pure-alphanumeric password is rejected
+  (`ERROR 1819`). Use **URL-safe specials** (`_`, `-`, `.`) which satisfy the policy **and** need no
+  encoding in `DATABASE_URL`. If a password has `@`/`!`/etc., URL-encode them (`@`→`%40`, `!`→`%21`)
+  — an unencoded `@` breaks Prisma's URL parsing (`P1000`).
+- **Node is under root's nvm** (`/root/.nvm/...`), which `www-data` can't reach (`/root` is `700`).
+  There's a **system `/usr/bin/node`** — the service uses that. Don't point `ExecStart` at nvm.
+- Build with **`npm run build`** (not `vite build`, not `npx …`).
 
 ---
 
