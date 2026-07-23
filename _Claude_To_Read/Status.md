@@ -1580,10 +1580,10 @@ here); ~646M swap used with RAM free is normal cold-page eviction, not memory pr
 to add eprime workers when the PM2 decision is revisited.
 
 ### Deferred (by user)
-- **PM2 cluster / load-balancing for eprime** — "decide in the future." A local, **uncommitted** edit to
-  `deploy/ecosystem.config.cjs` (2 workers, `exec_mode: 'cluster'`, `max_memory_restart: 300M`) is staged
-  as a draft for that decision; eprime is confirmed cluster-safe (stateless REST, JWT auth, MySQL as the
-  only shared state — no websockets/sessions).
+- **PM2 cluster / load-balancing for eprime** — "decide in the future." eprime currently runs under
+  **systemd** (single `www-data` process, port 5010); the `deploy/ecosystem.config.cjs` PM2 draft was
+  **discarded** (file deleted). If revisited, eprime is confirmed cluster-safe (stateless REST, JWT auth,
+  MySQL as the only shared state — no websockets/sessions).
 - **Remove the old `apps.cebu.gov.ph 10.30.0.15` deploy key** from the primehrm repo's GitHub Settings →
   Deploy keys (keep the icto one). Housekeeping only.
 
