@@ -1566,7 +1566,24 @@ no-ops). Full as-built + gotchas in `_Claude_To_Read/Deployment.md`.
   char** → use URL-safe specials (`_-.`); URL-encode any `@`/`!` in `DATABASE_URL`.
 - Node is under **root's nvm** (unreachable by `www-data`); service uses system `/usr/bin/node`.
 
-### Remaining
-- **Tear down 0.15** (`llcprime` service/conf/DB/folder/deploy-key) — steps in Deployment.md.
-- Deployed from branch `feat/rsp-appointment-forms-and-single-lgu-seed`; merge to `main` when ready.
+### Wrap-up — COMPLETED (2026-07-23)
+- [x] **0.15 torn down** — `llcprime` service/conf/DB/folder + the `github.com-primehrm` deploy-key
+  alias all removed; `/access` and `/prime` verified still live after the Apache reload.
+- [x] **Merged to `main`** — `e370d5e` (feature merge) + `b427544` (remove demo-accounts block on the
+  login page). Feature branch `feat/rsp-appointment-forms-and-single-lgu-seed` deleted (local + origin).
+
+### Health check (2026-07-23)
+Live `htop` on the `icto` box: **~783M / 8.00G RAM** used, CPUs near-idle, 42-day uptime — the whole
+shared stack (eprime, ambulancetracker, aidmap, ictcongress2025, PHP apps, MySQL) fits in <800M with
+7G free. Notes: load avg ~2 while CPUs idle is the **host's** figure through the LXC container (cosmetic
+here); ~646M swap used with RAM free is normal cold-page eviction, not memory pressure. Plenty of room
+to add eprime workers when the PM2 decision is revisited.
+
+### Deferred (by user)
+- **PM2 cluster / load-balancing for eprime** — "decide in the future." A local, **uncommitted** edit to
+  `deploy/ecosystem.config.cjs` (2 workers, `exec_mode: 'cluster'`, `max_memory_restart: 300M`) is staged
+  as a draft for that decision; eprime is confirmed cluster-safe (stateless REST, JWT auth, MySQL as the
+  only shared state — no websockets/sessions).
+- **Remove the old `apps.cebu.gov.ph 10.30.0.15` deploy key** from the primehrm repo's GitHub Settings →
+  Deploy keys (keep the icto one). Housekeeping only.
 

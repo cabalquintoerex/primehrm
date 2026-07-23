@@ -341,7 +341,9 @@ sudo chown -R www-data:www-data /var/www/html/eprime/server/uploads
 
 ---
 
-## Teardown of the 0.15 sub-path deployment (do LAST, after eprime is verified)
+## Teardown of the 0.15 sub-path deployment — ✅ DONE (2026-07-23)
+
+Executed and verified: `/access` and `/prime` still live after the reload. Runbook kept for reference.
 
 On `10.30.0.15`:
 ```bash
