@@ -87,7 +87,6 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -274,31 +273,6 @@ export function LoginPage() {
               <p className="mt-6 text-[11px] text-center text-gray-400">
                 PRIME-HRM &mdash; Meritocracy and Excellence in Human Resource Management
               </p>
-
-              {/* Temporary: Demo accounts */}
-              <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200">
-                <p className="text-[11px] font-semibold text-amber-700 mb-2">Demo Accounts (temporary)</p>
-                <div className="space-y-1">
-                  {[
-                    { role: 'HR Admin', user: 'lapulapuhr', pass: 'hradmin123' },
-                    { role: 'Office Admin', user: 'lapulapueng', pass: 'office123' },
-                    { role: 'Applicant', user: 'juandelacruz', pass: 'applicant123' },
-                  ].map((acc) => (
-                    <button
-                      key={acc.user}
-                      type="button"
-                      className="w-full flex items-center justify-between text-[11px] text-amber-800 hover:bg-amber-100 rounded px-2 py-1 transition-colors text-left"
-                      onClick={() => {
-                        setValue('login', acc.user);
-                        setValue('password', acc.pass);
-                      }}
-                    >
-                      <span className="font-medium">{acc.role}</span>
-                      <span className="text-amber-600">{acc.user} / {acc.pass}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
         </div>
       </div>
 
