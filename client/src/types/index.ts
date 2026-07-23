@@ -358,17 +358,24 @@ export interface WorkExperienceSheet {
   version: number;
 }
 
+/**
+ * One work experience block on the CS Form 212 Attachment. Mirrors the printed form, which is a
+ * narrative document rather than a grid — `duration` is deliberately free text ("1998-Present",
+ * "February 11, 2011 - present") because the form's own instructions call for that format.
+ * Independent of the PDS Section V work experience; the applicant fills this in from scratch.
+ */
+export interface WESEntry {
+  duration: string;
+  position: string;
+  officeUnit: string;
+  immediateSupervisor: string;
+  agencyAndLocation: string;
+  accomplishments: string[];
+  summaryOfDuties: string;
+}
+
 export interface WESData {
-  entries: Array<{
-    period: { from: string; to: string };
-    positionTitle: string;
-    department: string;
-    monthlySalary: string;
-    salaryGrade: string;
-    statusOfAppointment: string;
-    isGovernmentService: boolean;
-    dutiesAndResponsibilities: string[];
-  }>;
+  entries: WESEntry[];
 }
 
 export type InterviewStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
@@ -412,7 +419,8 @@ export interface Appointment {
   application?: Application & {
     assessmentScore?: AssessmentScore | null;
   };
-  position?: Pick<Position, 'id' | 'title' | 'itemNumber' | 'salaryGrade' | 'monthlySalary' | 'placeOfAssignment' | 'slots'> & {
+  // openDate/closeDate carry the publication period printed on CS Form No. 1
+  position?: Pick<Position, 'id' | 'title' | 'itemNumber' | 'salaryGrade' | 'monthlySalary' | 'placeOfAssignment' | 'slots' | 'openDate' | 'closeDate'> & {
     department?: Pick<Department, 'id' | 'name'> | null;
     lgu?: Pick<Lgu, 'id' | 'name' | 'slug' | 'logo' | 'address'> | null;
   };
@@ -471,21 +479,61 @@ export interface TrainingParticipant {
   updatedAt: string;
 }
 
+/** A scored factor within a group ("EDUCATION", max weight 0.35). */
+export interface AssessmentFactor {
+  id: number;
+  groupId: number;
+  label: string;
+  maxWeight: number | string;
+  sortOrder: number;
+}
+
+/**
+ * A factor group on the comparative assessment ("II - ETE [40]").
+ * `positionId` null = the LGU's reusable default; set = the snapshot frozen onto that position.
+ * A group with more than one factor shows a subtotal on its header.
+ */
+export interface AssessmentGroup {
+  id: number;
+  lguId: number;
+  positionId: number | null;
+  code: string;
+  label: string | null;
+  points: number | string;
+  sortOrder: number;
+  factors: AssessmentFactor[];
+}
+
 export interface AssessmentScore {
   id: number;
   applicationId: number;
   positionId: number;
-  educationScore: number | string | null;
-  trainingScore: number | string | null;
-  experienceScore: number | string | null;
-  performanceScore: number | string | null;
-  psychosocialScore: number | string | null;
-  potentialScore: number | string | null;
-  interviewScore: number | string | null;
+  /** { "<factorId>": ratingPercent } — the rating entered per factor (0-100) */
+  factorScores: Record<string, number> | null;
   totalScore: number | string | null;
   remarks: string | null;
   scoredBy: number;
   application?: Application;
   position?: Pick<Position, 'id' | 'title' | 'itemNumber' | 'slots' | 'departmentId'> & { department?: Pick<Department, 'id' | 'name'> | null };
   scorer?: Pick<User, 'id' | 'firstName' | 'lastName'>;
+}
+
+export type SignatoryType = 'PSB_MEMBER' | 'PREPARED_BY';
+
+/**
+ * HRMPSB signatory for an LGU — the signature block on the Comparative Assessment Form.
+ * Managed in Administration, reused by every generated form.
+ */
+export interface PsbMember {
+  id: number;
+  lguId: number;
+  name: string;
+  /** Government position, e.g. "Governor" */
+  designation: string | null;
+  /** Board role, e.g. "Chairperson, HRMPSB" */
+  psbRole: string | null;
+  type: SignatoryType;
+  sortOrder: number;
+  isActive: boolean;
+  lgu?: Pick<Lgu, 'id' | 'name'>;
 }

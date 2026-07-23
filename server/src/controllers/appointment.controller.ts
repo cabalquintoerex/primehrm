@@ -5,7 +5,7 @@ import { createAuditLog } from '../utils/audit';
 
 const DEFAULT_FINAL_REQUIREMENTS = [
   { requirementName: 'Oath of Office (CS Form No. 32)', description: 'Signed Oath of Office form', sortOrder: 1 },
-  { requirementName: 'Appointment Form (CS Form No. 33-B)', description: 'Signed Appointment form', sortOrder: 2 },
+  { requirementName: 'Appointment Form (CS Form No. 33-A)', description: 'Signed Appointment form', sortOrder: 2 },
   { requirementName: 'Assumption to Duty', description: 'Certificate of Assumption to Duty', sortOrder: 3 },
   { requirementName: 'Certificate of Live Birth (PSA)', description: 'Authenticated copy from PSA', sortOrder: 4 },
   { requirementName: 'Marriage Certificate (if applicable)', description: 'PSA-authenticated copy', sortOrder: 5 },
@@ -47,6 +47,17 @@ export const createAppointment = async (req: AuthRequest, res: Response) => {
     }
 
     const appointment = await prisma.$transaction(async (tx) => {
+      // Vacancy guard — counted inside the transaction so two concurrent appointments can't
+      // both pass the check and overfill the position. APPOINTED is the binding state, so it
+      // is what counts against the slots (SELECTED applicants are still just candidates).
+      const alreadyAppointed = await tx.application.count({
+        where: { positionId: application.position.id, status: 'APPOINTED' },
+      });
+
+      if (alreadyAppointed >= application.position.slots) {
+        throw new Error('SLOTS_FULL');
+      }
+
       // Create appointment
       const appt = await tx.appointment.create({
         data: {
@@ -110,6 +121,12 @@ export const createAppointment = async (req: AuthRequest, res: Response) => {
 
     return res.status(201).json({ data: appointment });
   } catch (error) {
+    if (error instanceof Error && error.message === 'SLOTS_FULL') {
+      return res.status(400).json({
+        message:
+          'All vacancy slots for this position are already filled. Increase the number of vacancies or revoke an existing appointment first.',
+      });
+    }
     console.error('Create appointment error:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
@@ -147,6 +164,8 @@ export const getAppointments = async (req: AuthRequest, res: Response) => {
           position: {
             select: {
               id: true, title: true, itemNumber: true, salaryGrade: true, monthlySalary: true,
+              // Publication period — printed in the CS Form No. 1 transmittal
+              openDate: true, closeDate: true,
               department: { select: { id: true, name: true } },
             },
           },

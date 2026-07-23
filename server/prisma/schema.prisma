@@ -26,8 +26,10 @@ model Lgu {
   departments     Department[]
   positions       Position[]
   positionCatalog PositionCatalog[]
-  trainings       Training[]
-  publications    Publication[]
+  trainings        Training[]
+  publications     Publication[]
+  assessmentGroups AssessmentGroup[]
+  psbMembers       PsbMember[]
 
   @@map("lgus")
 }
@@ -125,6 +127,7 @@ model Position {
   applications         Application[]
   interviewSchedules   InterviewSchedule[]
   assessmentScores     AssessmentScore[]
+  assessmentGroups     AssessmentGroup[]
   appointments         Appointment[]
 
   @@map("positions")
@@ -332,22 +335,82 @@ model InterviewScheduleApplicant {
   @@map("interview_schedule_applicants")
 }
 
+enum SignatoryType {
+  PSB_MEMBER
+  PREPARED_BY
+}
+
+/// HRMPSB signatories for an LGU — the signature block on the Comparative Assessment Form.
+/// Managed in Administration and reused by every generated form.
+model PsbMember {
+  id          Int           @id @default(autoincrement())
+  lguId       Int           @map("lgu_id")
+  name        String        @db.VarChar(191)
+  /// Their government position, e.g. "Governor", "Provincial Legal Officer"
+  designation String?       @db.VarChar(191)
+  /// Their role on the board, e.g. "Chairperson, HRMPSB", "Member, HRMPSB-PEACE Representative"
+  psbRole     String?       @map("psb_role") @db.VarChar(191)
+  type        SignatoryType @default(PSB_MEMBER)
+  sortOrder   Int           @default(0) @map("sort_order")
+  isActive    Boolean       @default(true) @map("is_active")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  lgu Lgu @relation(fields: [lguId], references: [id])
+
+  @@index([lguId, type])
+  @@map("psb_members")
+}
+
+/// A factor group on the comparative assessment ("II - ETE [40]").
+/// positionId NULL = the LGU's reusable default template.
+/// positionId SET  = a snapshot frozen onto that position when it was first assessed.
+model AssessmentGroup {
+  id         Int      @id @default(autoincrement())
+  lguId      Int      @map("lgu_id")
+  positionId Int?     @map("position_id")
+  code       String   @db.VarChar(16)
+  label      String?  @db.VarChar(191)
+  points     Decimal  @db.Decimal(6, 2)
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  lgu      Lgu                @relation(fields: [lguId], references: [id])
+  position Position?          @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  factors  AssessmentFactor[]
+
+  @@index([lguId, positionId])
+  @@map("assessment_groups")
+}
+
+/// A scored factor within a group ("EDUCATION", max weight 0.35).
+/// A group whose factors number > 1 shows a subtotal on its header.
+model AssessmentFactor {
+  id        Int      @id @default(autoincrement())
+  groupId   Int      @map("group_id")
+  label     String   @db.VarChar(191)
+  maxWeight Decimal  @map("max_weight") @db.Decimal(6, 4)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group AssessmentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("assessment_factors")
+}
+
 model AssessmentScore {
-  id                Int      @id @default(autoincrement())
-  applicationId     Int      @unique @map("application_id")
-  positionId        Int      @map("position_id")
-  educationScore    Decimal? @map("education_score") @db.Decimal(5, 2)
-  trainingScore     Decimal? @map("training_score") @db.Decimal(5, 2)
-  experienceScore   Decimal? @map("experience_score") @db.Decimal(5, 2)
-  performanceScore  Decimal? @map("performance_score") @db.Decimal(5, 2)
-  psychosocialScore Decimal? @map("psychosocial_score") @db.Decimal(5, 2)
-  potentialScore    Decimal? @map("potential_score") @db.Decimal(5, 2)
-  interviewScore    Decimal? @map("interview_score") @db.Decimal(5, 2)
-  totalScore        Decimal? @map("total_score") @db.Decimal(5, 2)
-  remarks           String?  @db.Text
-  scoredBy          Int      @map("scored_by")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id            Int      @id @default(autoincrement())
+  applicationId Int      @unique @map("application_id")
+  positionId    Int      @map("position_id")
+  /// { "<factorId>": ratingPercent }  — the rating entered per factor (0-100)
+  factorScores  Json?    @map("factor_scores")
+  totalScore    Decimal? @map("total_score") @db.Decimal(6, 2)
+  remarks       String?  @db.Text
+  scoredBy      Int      @map("scored_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   application Application @relation(fields: [applicationId], references: [id])
   position    Position    @relation(fields: [positionId], references: [id])

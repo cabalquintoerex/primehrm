@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: `${import.meta.env.BASE_URL}api`,
   withCredentials: true,
   timeout: 30000,
 });
@@ -26,13 +26,16 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const { data } = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
+        const { data } = await axios.post(`${import.meta.env.BASE_URL}api/auth/refresh`, {}, { withCredentials: true });
         useAuthStore.getState().setToken(data.token);
         originalRequest.headers.Authorization = `Bearer ${data.token}`;
         return api(originalRequest);
       } catch (refreshError) {
+        // Same rule on session expiry: LGU users land back on their branded login.
+        const state = useAuthStore.getState();
+        const slug = state.user?.lgu?.slug ?? state.lastLguSlug;
         useAuthStore.getState().logout();
-        window.location.href = '/';
+        window.location.href = `${import.meta.env.BASE_URL}${slug ? `${slug}/login` : ''}`;
         return Promise.reject(refreshError);
       }
     }

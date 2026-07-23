@@ -15,14 +15,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useActiveModule, useModuleAccess } from '@/hooks/useActiveModule';
-import { MODULES } from '@/lib/modules';
+import { MODULES, logoutDestination } from '@/lib/modules';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
 }
 
 export function Header({ onToggleSidebar }: HeaderProps) {
-  const { user, logout } = useAuthStore();
+  const { user, logout, lastLguSlug } = useAuthStore();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const activeModule = useActiveModule();
@@ -36,6 +36,8 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const showAdminGear = canAccess('ADMIN') && activeModule?.key !== 'ADMIN';
 
   const handleLogout = async () => {
+    // Resolve the destination before clearing the store — afterwards the LGU is gone.
+    const destination = logoutDestination(user, lastLguSlug);
     try {
       await api.post('/auth/logout');
     } catch (e) {
@@ -43,7 +45,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     }
     queryClient.clear();
     logout();
-    navigate('/');
+    navigate(destination);
   };
 
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase() : 'U';

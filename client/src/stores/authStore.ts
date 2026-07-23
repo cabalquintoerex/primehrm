@@ -8,6 +8,8 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   moduleMemory: ModuleMemory | null;
+  /** Slug of the last LGU signed in on this device. Survives logout so the branded login sticks. */
+  lastLguSlug: string | null;
   setAuth: (user: User, token: string) => void;
   setToken: (token: string) => void;
   setUser: (user: User) => void;
@@ -23,12 +25,21 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       moduleMemory: null,
-      setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
+      lastLguSlug: null,
+      setAuth: (user, token) =>
+        set({
+          user,
+          token,
+          isAuthenticated: true,
+          // Remember the LGU so sign-out and session expiry can return to its branded login.
+          ...(user.lgu?.slug ? { lastLguSlug: user.lgu.slug } : {}),
+        }),
       setToken: (token) => set({ token }),
       setUser: (user) => set({ user }),
       rememberModule: (userId, module) => set({ moduleMemory: { userId, module } }),
       forgetModule: () => set({ moduleMemory: null }),
-      // moduleMemory deliberately survives logout — it is a device preference, not session state.
+      // moduleMemory and lastLguSlug deliberately survive logout — both are device preferences,
+      // not session state. lastLguSlug is what sends an LGU user back to their own login page.
       logout: () => set({ user: null, token: null, isAuthenticated: false }),
     }),
     {
@@ -38,6 +49,7 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
         moduleMemory: state.moduleMemory,
+        lastLguSlug: state.lastLguSlug,
       }),
     }
   )

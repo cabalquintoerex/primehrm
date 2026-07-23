@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useActiveModule, useModuleAccess } from '@/hooks/useActiveModule';
 import { homeFor, type ModuleKey } from '@/lib/modules';
+import { assetUrl } from '@/lib/basePath';
 
 interface SidebarProps {
   open: boolean;
@@ -161,6 +162,13 @@ const navItems: NavItem[] = [
     module: 'ADMIN',
   },
   {
+    title: 'HRMPSB Signatories',
+    href: '/admin/psb-members',
+    icon: Users,
+    roles: ['SUPER_ADMIN', 'LGU_HR_ADMIN'],
+    module: 'ADMIN',
+  },
+  {
     title: 'Audit Logs',
     href: '/admin/audit-logs',
     icon: ScrollText,
@@ -180,6 +188,13 @@ const navItems: NavItem[] = [
     title: 'Personal Data Sheet',
     href: '/applicant/pds',
     icon: FileText,
+    roles: ['APPLICANT'],
+    module: null,
+  },
+  {
+    title: 'Work Experience Sheet',
+    href: '/applicant/wes',
+    icon: Briefcase,
     roles: ['APPLICANT'],
     module: null,
   },
@@ -269,7 +284,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       <div className="flex h-12 items-center border-b px-4">
         <Link to={user ? homeFor(user) : '/'} className="flex items-center gap-2">
           {user?.lgu?.logo ? (
-            <img src={user.lgu.logo} alt={user.lgu.name} className="h-6 w-6 rounded object-cover" />
+            <img src={assetUrl(user.lgu.logo)} alt={user.lgu.name} className="h-6 w-6 rounded object-cover" />
           ) : (
             <Shield className="h-6 w-6 text-primary" />
           )}

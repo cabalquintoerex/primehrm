@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Publication, PaginatedResponse } from '@/types';
+import { withBasePath } from '@/lib/basePath';
 
 export function PublicationPage() {
   const queryClient = useQueryClient();
@@ -128,7 +129,7 @@ export function PublicationPage() {
         <div className="flex items-center gap-2">
           {user?.lgu?.slug && (
             <Button asChild variant="outline">
-              <a href={`/${user.lgu.slug}/careers`} target="_blank" rel="noopener noreferrer">
+              <a href={withBasePath(`/${user.lgu.slug}/careers`)} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-2 h-4 w-4" />
                 View Careers Page
               </a>

@@ -9,12 +9,12 @@ const generateTokens = (user: { id: number; email: string; role: string }) => {
   const token = jwt.sign(
     { id: user.id, email: user.email, role: user.role },
     process.env.JWT_SECRET!,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '15m' } as jwt.SignOptions
   );
   const refreshToken = jwt.sign(
     { id: user.id },
     process.env.JWT_REFRESH_SECRET!,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' } as jwt.SignOptions
   );
   return { token, refreshToken };
 };
@@ -50,15 +50,17 @@ export const login = async (req: Request, res: Response) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -99,8 +101,8 @@ export const logout = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    res.clearCookie('token');
-    res.clearCookie('refreshToken');
+    res.clearCookie('token', { path: process.env.COOKIE_PATH || '/' });
+    res.clearCookie('refreshToken', { path: process.env.COOKIE_PATH || '/' });
     return res.json({ message: 'Logged out successfully' });
   } catch (error) {
     return res.status(500).json({ message: 'Internal server error' });
@@ -129,15 +131,17 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     res.cookie('token', tokens.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -181,15 +185,17 @@ export const register = async (req: Request, res: Response) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true', // set true only when served over HTTPS
       sameSite: 'lax',
+      path: process.env.COOKIE_PATH || '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 

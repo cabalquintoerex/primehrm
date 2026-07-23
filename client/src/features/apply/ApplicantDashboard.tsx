@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, FileText, Briefcase, ClipboardList, Building2, ExternalLink } from 'lucide-react';
+import { assetUrl } from '@/lib/basePath';
 
 interface PublicLgu {
   id: number;
@@ -41,7 +42,7 @@ export function ApplicantDashboard() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link to="/applicant/applications">
           <Card className="p-4 hover:border-emerald-300 transition-colors cursor-pointer">
             <div className="flex items-center gap-3">
@@ -64,6 +65,19 @@ export function ApplicantDashboard() {
               <div>
                 <p className="text-sm font-semibold text-gray-900">Personal Data Sheet</p>
                 <p className="text-xs text-muted-foreground">Update your PDS (CS Form 212)</p>
+              </div>
+            </div>
+          </Card>
+        </Link>
+        <Link to="/applicant/wes">
+          <Card className="p-4 hover:border-emerald-300 transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-teal-50">
+                <ClipboardList className="h-5 w-5 text-teal-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Work Experience Sheet</p>
+                <p className="text-xs text-muted-foreground">Attachment to CS Form 212</p>
               </div>
             </div>
           </Card>
@@ -109,7 +123,7 @@ export function ApplicantDashboard() {
                   <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-emerald-50 shrink-0">
                     {lgu.logo ? (
                       <img
-                        src={`${import.meta.env.VITE_API_URL?.replace('/api', '')}/${lgu.logo}`}
+                        src={assetUrl(lgu.logo)}
                         alt={lgu.name}
                         className="h-8 w-8 rounded object-cover"
                       />

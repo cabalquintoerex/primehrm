@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, Shield, MapPin, Hash, Calendar, User, CheckCircle2, Briefcase } from 'lucide-react';
 import type { Position, Lgu, PaginatedResponse, Application } from '@/types';
 import { homeFor } from '@/lib/modules';
+import { assetUrl } from '@/lib/basePath';
 
 function formatPeso(amount: number | string | null): string {
   if (amount === null || amount === undefined) return '-';
@@ -67,7 +68,7 @@ export function CareersPage() {
         {lgu?.headerBg && (
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url('${lgu.headerBg}')` }}
+            style={{ backgroundImage: `url('${assetUrl(lgu.headerBg)}')` }}
           />
         )}
         {/* Dark overlay for text readability */}
@@ -103,7 +104,7 @@ export function CareersPage() {
             <div className="flex justify-center mb-5">
               {lgu?.logo ? (
                 <img
-                  src={lgu.logo}
+                  src={assetUrl(lgu.logo)}
                   alt={lgu.name}
                   className="h-24 w-24 rounded-full border-4 border-white/40 object-cover bg-white shadow-xl"
                 />

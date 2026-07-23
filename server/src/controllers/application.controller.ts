@@ -335,10 +335,9 @@ export const updateApplicationStatus = async (req: AuthRequest, res: Response) =
       }
     }
 
-    // HR admins cannot set SHORTLISTED (only office admin can)
-    if (req.user!.role === 'LGU_HR_ADMIN' && status === 'SHORTLISTED') {
-      return res.status(403).json({ message: 'Only the Office Admin can shortlist applicants' });
-    }
+    // HR admins may shortlist as well as the office admin — HR needs to be able to move the
+    // pipeline forward when an office hasn't screened yet (an unshortlisted applicant can
+    // never be scheduled for an interview).
 
     const data: any = { status };
     if (notes !== undefined) data.notes = notes;
@@ -614,13 +613,34 @@ export const getApplicationHistory = async (req: AuthRequest, res: Response) => 
   try {
     const applicationId = Number(req.params.id);
 
-    // Verify the applicant owns this application
-    if (req.user!.role === 'APPLICANT') {
-      const app = await prisma.application.findFirst({
-        where: { id: applicationId, applicantId: req.user!.id },
-      });
-      if (!app) {
-        return res.status(404).json({ message: 'Application not found' });
+    // Mirror the scoping in getApplication — the trail must not be readable by an admin who
+    // cannot read the application itself (e.g. another LGU's HR admin).
+    const application = await prisma.application.findUnique({
+      where: { id: applicationId },
+      include: { position: { select: { lguId: true, departmentId: true } } },
+    });
+
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    if (req.user!.role === 'APPLICANT' && application.applicantId !== req.user!.id) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
+
+    if (req.user!.role === 'LGU_HR_ADMIN' && application.position.lguId !== req.user!.lguId) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
+
+    if (req.user!.role === 'LGU_OFFICE_ADMIN') {
+      if (application.position.lguId !== req.user!.lguId) {
+        return res.status(403).json({ message: 'Insufficient permissions' });
+      }
+      if (application.position.departmentId !== req.user!.departmentId) {
+        return res.status(403).json({ message: 'Insufficient permissions' });
+      }
+      if (application.status === 'SUBMITTED') {
+        return res.status(403).json({ message: 'Insufficient permissions' });
       }
     }
 

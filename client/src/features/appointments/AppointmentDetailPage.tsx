@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
@@ -13,11 +13,16 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  ArrowLeft, Loader2, Printer, CheckCircle2, XCircle, Plus, Trash2, FileText,
+  ArrowLeft, Loader2, FileDown, CheckCircle2, XCircle, Plus, Trash2, FileText,
   Calendar, MapPin, Building2, User, Mail,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import {
+  generateAppointmentForm,
+  generateOathOfOffice,
+  generateAssumptionToDuty,
+} from '@/lib/generateAppointmentForms';
 import type { Appointment, FinalRequirement, PDSData } from '@/types';
 
 export function AppointmentDetailPage() {
@@ -26,8 +31,6 @@ export function AppointmentDetailPage() {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const appointmentFormRef = useRef<HTMLDivElement>(null);
-  const oathFormRef = useRef<HTMLDivElement>(null);
 
   const [showAddReq, setShowAddReq] = useState(false);
   const [newReqName, setNewReqName] = useState('');
@@ -105,36 +108,6 @@ export function AppointmentDetailPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to unverify'),
   });
 
-  const handlePrint = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (!ref.current) return;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Print Form</title>
-          <style>
-            body { font-family: 'Times New Roman', Times, serif; margin: 0; padding: 20px; font-size: 12pt; }
-            .form-container { max-width: 8.5in; margin: 0 auto; }
-            table { width: 100%; border-collapse: collapse; }
-            td, th { border: 1px solid #000; padding: 4px 6px; font-size: 10pt; }
-            .no-border { border: none; }
-            .text-center { text-align: center; }
-            .text-right { text-align: right; }
-            .bold { font-weight: bold; }
-            .underline { text-decoration: underline; }
-            .header { text-align: center; margin-bottom: 10px; }
-            .signature-line { border-bottom: 1px solid #000; min-width: 200px; display: inline-block; margin-top: 30px; }
-            @media print { body { margin: 0; } @page { margin: 0.5in; } }
-          </style>
-        </head>
-        <body>${ref.current.innerHTML}</body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 250);
-  };
 
   if (isLoading) {
     return (
@@ -249,13 +222,17 @@ export function AppointmentDetailPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => handlePrint(appointmentFormRef)}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print Appointment Form (CS Form 33-B)
+            <Button variant="outline" onClick={() => generateAppointmentForm(appointment, pdsData)}>
+              <FileDown className="mr-2 h-4 w-4" />
+              Appointment Form (CS Form 33-A)
             </Button>
-            <Button variant="outline" onClick={() => handlePrint(oathFormRef)}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print Oath of Office (CS Form 32)
+            <Button variant="outline" onClick={() => generateOathOfOffice(appointment, pdsData)}>
+              <FileDown className="mr-2 h-4 w-4" />
+              Oath of Office (CS Form 32)
+            </Button>
+            <Button variant="outline" onClick={() => generateAssumptionToDuty(appointment, pdsData)}>
+              <FileDown className="mr-2 h-4 w-4" />
+              Assumption to Duty (CS Form 4)
             </Button>
           </div>
         </CardContent>
@@ -308,15 +285,6 @@ export function AppointmentDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Hidden printable forms */}
-      <div className="hidden">
-        <div ref={appointmentFormRef}>
-          <AppointmentFormTemplate appointment={appointment} pdsData={pdsData} />
-        </div>
-        <div ref={oathFormRef}>
-          <OathOfOfficeTemplate appointment={appointment} pdsData={pdsData} />
-        </div>
-      </div>
 
       {/* Add Requirement Dialog */}
       <Dialog open={showAddReq} onOpenChange={setShowAddReq}>
@@ -439,161 +407,3 @@ function RequirementRow({
   );
 }
 
-function AppointmentFormTemplate({ appointment, pdsData }: { appointment: Appointment; pdsData: PDSData | null }) {
-  const applicant = appointment.application?.applicant;
-  const position = appointment.position;
-  const lgu = position?.lgu;
-  const name = applicant ? `${applicant.firstName} ${applicant.lastName}` : '';
-  const appointmentDate = format(new Date(appointment.appointmentDate), 'MMMM d, yyyy');
-
-  return (
-    <div className="form-container" style={{ fontFamily: "'Times New Roman', Times, serif", padding: '20px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '5px' }}>
-        <p style={{ fontSize: '9pt', margin: 0 }}>CS Form No. 33-B</p>
-        <p style={{ fontSize: '9pt', margin: 0 }}>Revised 2018</p>
-      </div>
-      <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-        <p style={{ fontSize: '9pt', margin: 0 }}>Republic of the Philippines</p>
-        <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: '2px 0' }}>{lgu?.name || 'LOCAL GOVERNMENT UNIT'}</p>
-        <p style={{ fontSize: '9pt', margin: 0 }}>{lgu?.address || ''}</p>
-      </div>
-
-      <h2 style={{ textAlign: 'center', fontSize: '14pt', fontWeight: 'bold', margin: '15px 0', textDecoration: 'underline' }}>
-        APPOINTMENT
-      </h2>
-
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
-        <tbody>
-          <tr>
-            <td style={{ border: '1px solid #000', padding: '4px 6px', width: '30%' }}>1. Name of Appointee:</td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px', fontWeight: 'bold' }}>{name}</td>
-          </tr>
-          <tr>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>2. Position Title:</td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px', fontWeight: 'bold' }}>{position?.title || ''}</td>
-          </tr>
-          <tr>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>3. Item No.:</td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>{position?.itemNumber || ''}</td>
-          </tr>
-          <tr>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>4. Salary Grade / Step:</td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>{position?.salaryGrade || ''}</td>
-          </tr>
-          <tr>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>5. Rate per Annum (Monthly Salary):</td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
-              {position?.monthlySalary ? `₱${Number(position.monthlySalary).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : ''}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>6. Place of Assignment:</td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>{position?.placeOfAssignment || position?.department?.name || ''}</td>
-          </tr>
-          <tr>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>7. Date of Appointment:</td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>{appointmentDate}</td>
-          </tr>
-          <tr>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>8. Employment Status:</td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>Permanent</td>
-          </tr>
-          {pdsData && (
-            <>
-              <tr>
-                <td style={{ border: '1px solid #000', padding: '4px 6px' }}>9. Date of Birth:</td>
-                <td style={{ border: '1px solid #000', padding: '4px 6px' }}>{pdsData.dateOfBirth || ''}</td>
-              </tr>
-              <tr>
-                <td style={{ border: '1px solid #000', padding: '4px 6px' }}>10. Address:</td>
-                <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
-                  {[pdsData.residentialAddress?.houseNo, pdsData.residentialAddress?.street, pdsData.residentialAddress?.barangay, pdsData.residentialAddress?.city, pdsData.residentialAddress?.province].filter(Boolean).join(', ')}
-                </td>
-              </tr>
-            </>
-          )}
-        </tbody>
-      </table>
-
-      <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
-        <div style={{ textAlign: 'center', width: '45%' }}>
-          <div style={{ borderBottom: '1px solid #000', minHeight: '30px', marginBottom: '5px' }}></div>
-          <p style={{ fontSize: '9pt', margin: 0 }}>Appointing Officer/Authority</p>
-        </div>
-        <div style={{ textAlign: 'center', width: '45%' }}>
-          <div style={{ borderBottom: '1px solid #000', minHeight: '30px', marginBottom: '5px' }}></div>
-          <p style={{ fontSize: '9pt', margin: 0 }}>Date</p>
-        </div>
-      </div>
-
-      <div style={{ marginTop: '30px', textAlign: 'center', width: '45%' }}>
-        <p style={{ fontSize: '10pt', margin: '0 0 5px 0' }}>Certified by:</p>
-        <div style={{ borderBottom: '1px solid #000', minHeight: '30px', marginBottom: '5px' }}></div>
-        <p style={{ fontSize: '9pt', margin: 0 }}>Human Resource Management Officer</p>
-      </div>
-    </div>
-  );
-}
-
-function OathOfOfficeTemplate({ appointment, pdsData }: { appointment: Appointment; pdsData: PDSData | null }) {
-  const applicant = appointment.application?.applicant;
-  const position = appointment.position;
-  const lgu = position?.lgu;
-  const name = applicant ? `${applicant.firstName} ${applicant.lastName}` : '';
-  const oathDate = appointment.oathDate ? format(new Date(appointment.oathDate), 'MMMM d, yyyy') : '________________';
-
-  return (
-    <div className="form-container" style={{ fontFamily: "'Times New Roman', Times, serif", padding: '20px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '5px' }}>
-        <p style={{ fontSize: '9pt', margin: 0 }}>CS Form No. 32</p>
-        <p style={{ fontSize: '9pt', margin: 0 }}>Revised 2017</p>
-      </div>
-      <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-        <p style={{ fontSize: '9pt', margin: 0 }}>Republic of the Philippines</p>
-        <p style={{ fontSize: '12pt', fontWeight: 'bold', margin: '2px 0' }}>{lgu?.name || 'LOCAL GOVERNMENT UNIT'}</p>
-        <p style={{ fontSize: '9pt', margin: 0 }}>{lgu?.address || ''}</p>
-      </div>
-
-      <h2 style={{ textAlign: 'center', fontSize: '16pt', fontWeight: 'bold', margin: '20px 0', textDecoration: 'underline' }}>
-        OATH OF OFFICE
-      </h2>
-
-      <div style={{ fontSize: '11pt', lineHeight: '1.8', textAlign: 'justify', marginTop: '20px' }}>
-        <p>
-          I, <strong style={{ textDecoration: 'underline' }}>{name}</strong>, having been appointed to the position of{' '}
-          <strong style={{ textDecoration: 'underline' }}>{position?.title || ''}</strong> in the{' '}
-          <strong>{lgu?.name || ''}</strong>, do solemnly swear (or affirm) that I will faithfully discharge to the best of my ability the duties of my present position and of all others that I may hereafter hold under the Republic of the Philippines; that I will support and defend the Constitution of the Philippines and will maintain true faith and allegiance thereto; that I will obey the laws, legal orders and decrees promulgated by the duly constituted authorities of the Republic of the Philippines; and that I impose this obligation upon myself voluntarily, without mental reservation or purpose of evasion.
-        </p>
-        <p style={{ textAlign: 'right', marginTop: '5px' }}>SO HELP ME GOD.</p>
-      </div>
-
-      <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'flex-end' }}>
-        <div style={{ textAlign: 'center', width: '45%' }}>
-          <div style={{ borderBottom: '1px solid #000', minHeight: '30px', marginBottom: '5px' }}></div>
-          <p style={{ fontSize: '10pt', margin: 0, fontWeight: 'bold' }}>{name}</p>
-          <p style={{ fontSize: '9pt', margin: 0 }}>Affiant</p>
-        </div>
-      </div>
-
-      <div style={{ marginTop: '30px' }}>
-        <p style={{ fontSize: '10pt' }}>
-          SUBSCRIBED AND SWORN to before me this <strong>{oathDate}</strong>,
-          affiant exhibiting to me the following identification:
-        </p>
-      </div>
-
-      <div style={{ marginTop: '10px', fontSize: '10pt' }}>
-        <p>Community Tax Certificate No.: ________________</p>
-        <p>Issued on: ________________</p>
-        <p>Issued at: ________________</p>
-      </div>
-
-      <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'flex-end' }}>
-        <div style={{ textAlign: 'center', width: '45%' }}>
-          <div style={{ borderBottom: '1px solid #000', minHeight: '30px', marginBottom: '5px' }}></div>
-          <p style={{ fontSize: '9pt', margin: 0 }}>Administering Officer</p>
-        </div>
-      </div>
-    </div>
-  );
-}

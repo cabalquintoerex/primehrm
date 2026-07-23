@@ -13,9 +13,14 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Award, CheckCircle2, Users, Briefcase, FileCheck } from 'lucide-react';
+import { Loader2, Award, CheckCircle2, Users, Briefcase, FileCheck, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Position, Department, AssessmentScore, ApplicationStatus } from '@/types';
+import { generatePsbCertification } from '@/lib/generatePsbCertification';
+import { fetchImageAsPngDataUrl } from '@/lib/imageToPng';
+import type { Position, Department, AssessmentScore, ApplicationStatus, PsbMember } from '@/types';
+
+/** The certification lists at most this many applicants, in rank order. */
+const MAX_CERTIFIED = 5;
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   QUALIFIED: { label: 'Qualified', className: 'bg-teal-500 text-white border-transparent' },
@@ -101,6 +106,58 @@ export function SelectionPage() {
     },
   });
 
+  // Generates the HRMPSB Certification for one position, listing its qualified applicants in
+  // rank order. Pulls the signatory block from Administration and middle initials from each PDS.
+  const [certPositionId, setCertPositionId] = useState<number | null>(null);
+  const certMutation = useMutation({
+    mutationFn: async (group: { position: AssessmentScore['position']; items: AssessmentScore[] }) => {
+      const { data: psbData } = await api.get('/psb-members');
+      const members: PsbMember[] = (psbData.data || []).filter(
+        (m: PsbMember) => m.type === 'PSB_MEMBER' && m.isActive
+      );
+
+      // Already ranked by total score desc from the server; keep that order and cap at the top 5.
+      const topItems = group.items.slice(0, MAX_CERTIFIED);
+      const applicants = await Promise.all(
+        topItems.map(async (assessment) => {
+          const applicant = assessment.application?.applicant;
+          let middle = '';
+          try {
+            const { data } = await api.get(`/applications/${assessment.applicationId}`);
+            const name = (data.data?.personalDataSheet?.data?.middleName || '').trim();
+            if (name) middle = ` ${name[0]}.`;
+          } catch {
+            // Middle initial is cosmetic — omit it rather than fail the certificate
+          }
+          return {
+            name: applicant
+              ? `${applicant.lastName}, ${applicant.firstName}${middle}`
+              : `Application #${assessment.applicationId}`,
+          };
+        })
+      );
+
+      // Optional — a missing or unreadable seal just leaves the header without one.
+      const lguLogo = await fetchImageAsPngDataUrl(user?.lgu?.logo);
+
+      generatePsbCertification({
+        lguName: user?.lgu?.name || '',
+        lguLogo,
+        positionTitle: group.position?.title || '',
+        itemNumber: group.position?.itemNumber ?? null,
+        officeName: group.position?.department?.name ?? null,
+        place: user?.lgu?.name ? `${user.lgu.name}` : null,
+        boardDate: null,
+        applicants,
+        members,
+      });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to generate the certification');
+    },
+    onSettled: () => setCertPositionId(null),
+  });
+
   // Group assessments by position
   const grouped = (assessments || []).reduce<Record<number, { position: AssessmentScore['position']; items: AssessmentScore[] }>>((acc, a) => {
     const posId = a.positionId;
@@ -137,6 +194,11 @@ export function SelectionPage() {
 
   const getSelectedCount = (items: AssessmentScore[]) =>
     items.filter((a) => a.application?.status === 'SELECTED').length;
+
+  // APPOINTED is the binding state — these consume vacancy slots and must count against them.
+  // Leaving them out made an already-full position look like it still had room.
+  const getAppointedCount = (items: AssessmentScore[]) =>
+    items.filter((a) => a.application?.status === 'APPOINTED').length;
 
   const totalQualified = assessments?.filter((a) => a.application?.status === 'QUALIFIED').length || 0;
   const totalSelected = assessments?.filter((a) => a.application?.status === 'SELECTED').length || 0;
@@ -241,9 +303,14 @@ export function SelectionPage() {
             const slots = pos?.slots || 1;
             const qualifiedCount = getQualifiedCount(group.items);
             const selectedCount = getSelectedCount(group.items);
+            const appointedCount = getAppointedCount(group.items);
             const selectedInPosition = group.items.filter(
               (a) => a.application?.status === 'QUALIFIED' && selected.has(a.applicationId)
             ).length;
+            // Appointments are final; selections are pending claims on the remaining slots.
+            const slotsFilled = appointedCount;
+            const slotsRemaining = Math.max(0, slots - slotsFilled);
+            const isPositionFull = slotsRemaining === 0;
 
             return (
               <Card key={posId}>
@@ -256,18 +323,49 @@ export function SelectionPage() {
                         {pos?.department?.name && <span>{pos.department.name}</span>}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Vacancy Slots</p>
-                      <p className="text-lg font-bold text-gray-900">{slots}</p>
-                      {selectedCount > 0 && (
-                        <p className="text-xs text-emerald-600">{selectedCount} already selected</p>
-                      )}
+                    <div className="flex items-start gap-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setCertPositionId(Number(posId));
+                          certMutation.mutate(group);
+                        }}
+                        disabled={certMutation.isPending || group.items.length === 0}
+                      >
+                        {certMutation.isPending && certPositionId === Number(posId) ? (
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <FileText className="mr-2 h-3.5 w-3.5" />
+                        )}
+                        PSB Certification
+                      </Button>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Vacancy Slots</p>
+                        <p className="text-lg font-bold text-gray-900">
+                          {slotsFilled} / {slots}
+                        </p>
+                        <p className={`text-xs ${isPositionFull ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                          {isPositionFull ? 'All slots filled' : `${slotsRemaining} remaining`}
+                        </p>
+                        {selectedCount > 0 && (
+                          <p className="text-xs text-emerald-600">{selectedCount} awaiting appointment</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  {selectedInPosition + selectedCount > slots && (
+                  {isPositionFull ? (
                     <p className="text-xs text-amber-600 mt-2">
-                      Warning: Selections ({selectedInPosition + selectedCount}) exceed available slots ({slots})
+                      All {slots} vacancy slot{slots === 1 ? '' : 's'} are filled. No further
+                      appointments can be made for this position.
                     </p>
+                  ) : (
+                    selectedInPosition + selectedCount > slotsRemaining && (
+                      <p className="text-xs text-amber-600 mt-2">
+                        Warning: selections ({selectedInPosition + selectedCount}) exceed the{' '}
+                        {slotsRemaining} remaining slot{slotsRemaining === 1 ? '' : 's'}
+                      </p>
+                    )
                   )}
                 </CardHeader>
                 <CardContent>
@@ -326,6 +424,9 @@ export function SelectionPage() {
                               size="sm"
                               variant="outline"
                               className="shrink-0 text-blue-600 border-blue-300 hover:bg-blue-50"
+                              // Server rejects this too; disabling just avoids a pointless round trip.
+                              disabled={isPositionFull}
+                              title={isPositionFull ? 'All vacancy slots are already filled' : undefined}
                               onClick={() => setAppointDialog({
                                 applicationId: assessment.applicationId,
                                 applicantName: applicant ? `${applicant.firstName} ${applicant.lastName}` : 'Unknown',

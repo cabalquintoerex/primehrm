@@ -10,11 +10,15 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles, module }: ProtectedRouteProps) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, lastLguSlug } = useAuthStore();
   const location = useLocation();
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/" state={{ from: location }} replace />;
+    // This redirect also fires on sign-out (logout() flips isAuthenticated and this re-renders
+    // before any navigate() lands), so it — not the caller — decides where a signed-out LGU user
+    // ends up. `lastLguSlug` survives logout precisely so that lands on their branded login.
+    const loginPath = lastLguSlug ? `/${lastLguSlug}/login` : '/';
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   const home = homeFor(user);

@@ -158,6 +158,21 @@ export function homeFor(user: Pick<User, 'role' | 'lgu' | 'moduleAccess'>): stri
 }
 
 /**
+ * Where to send someone after signing out. An LGU user goes back to their own branded login
+ * (`/cebu-city/login`) rather than the generic one, so the LGU's identity survives the round trip
+ * and they can sign straight back in. Applicants and super admins have no LGU, so they get `/`.
+ *
+ * Call this BEFORE clearing the auth store — it needs the user that is being logged out.
+ */
+export function logoutDestination(
+  user: Pick<User, 'lgu'> | null | undefined,
+  lastLguSlug?: string | null
+): string {
+  const slug = user?.lgu?.slug ?? lastLguSlug;
+  return slug ? `/${slug}/login` : '/';
+}
+
+/**
  * Where to land immediately after sign-in. Honours the launcher's "remember my choice"
  * preference, but only when it belongs to this user and the module is still reachable —
  * otherwise a revoked role, an unlicensed module, or a removed grant would bounce them

@@ -1,0 +1,28 @@
+# systemd unit for the LGU PRIME-HRM backend (Node/Express, port 5010)
+# ---------------------------------------------------------------------------
+#   sudo cp deploy/eprime-api.service /etc/systemd/system/eprime-api.service
+#   sudo nano /etc/systemd/system/eprime-api.service   # set User + confirm node path
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now eprime-api
+#   journalctl -u eprime-api -f
+# ---------------------------------------------------------------------------
+[Unit]
+Description=LGU PRIME-HRM API (eprime)
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/html/eprime/server
+# The app loads server/.env itself via dotenv (WorkingDirectory is the server dir),
+# so no EnvironmentFile here — systemd's stricter parser would choke on the quoted
+# DATABASE_URL. dotenv handles the quotes/special chars.
+ExecStart=/usr/bin/node dist/app.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

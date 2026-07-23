@@ -9,7 +9,7 @@ export const getPublicCareers = async (req: Request, res: Response) => {
 
     // Find LGU by slug
     const lgu = await prisma.lgu.findUnique({
-      where: { slug },
+      where: { slug: String(slug) },
       select: { id: true },
     });
 
@@ -70,7 +70,7 @@ export const getPublicPosition = async (req: Request, res: Response) => {
 
     // Find LGU by slug
     const lgu = await prisma.lgu.findUnique({
-      where: { slug },
+      where: { slug: String(slug) },
       select: { id: true },
     });
 

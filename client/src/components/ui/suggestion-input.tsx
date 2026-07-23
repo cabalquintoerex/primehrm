@@ -8,7 +8,7 @@ interface SuggestionInputProps extends Omit<React.InputHTMLAttributes<HTMLInputE
 
 const SuggestionInput = React.forwardRef<HTMLInputElement, SuggestionInputProps>(
   ({ className, suggestion, onChange, value, ...props }, ref) => {
-    const innerRef = React.useRef<HTMLInputElement>(null);
+    const innerRef = React.useRef<HTMLInputElement | null>(null);
     const combinedRef = (node: HTMLInputElement) => {
       innerRef.current = node;
       if (typeof ref === 'function') ref(node);
@@ -55,7 +55,7 @@ interface SuggestionTextareaProps extends Omit<React.TextareaHTMLAttributes<HTML
 
 const SuggestionTextarea = React.forwardRef<HTMLTextAreaElement, SuggestionTextareaProps>(
   ({ className, suggestion, onChange, value, ...props }, ref) => {
-    const innerRef = React.useRef<HTMLTextAreaElement>(null);
+    const innerRef = React.useRef<HTMLTextAreaElement | null>(null);
     const combinedRef = (node: HTMLTextAreaElement) => {
       innerRef.current = node;
       if (typeof ref === 'function') ref(node);
